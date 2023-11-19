@@ -1,3 +1,9 @@
+# ignore files under .history
+.history/*
+
+# ignore files under FISH/expert_demos
+FISH/expert_demos/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

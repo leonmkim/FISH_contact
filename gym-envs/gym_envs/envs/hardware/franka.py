@@ -3,9 +3,8 @@ import time
 import numpy as np
 import random
 from configparser import ConfigParser
-from xarm.wrapper import XArmAPI
 
-class XArm:
+class Franka:
 
 	def __init__(self, config_file='./robot.conf', home_displacement = (0,0,0), low_range=(1,1,0.2) , high_range=(2,2,1),
 				 keep_gripper_closed=False, highest_start=False, x_limit=None, y_limit=None, z_limit=None, yaw_limit=None,
@@ -13,7 +12,7 @@ class XArm:
 		self.arm = None
 		self.gripper_max_open = 800
 		self.gripper_min_open = 0
-		self.zero = (206/100,0/100,120.5/100)	# Units: .1 meters
+		self.zero = (206/100,0/100,120.5/100)	# Units: .1 meters 
 		self.home = home_displacement
 		self.keep_gripper_closed = keep_gripper_closed
 		self.highest_start = highest_start
@@ -108,7 +107,7 @@ class XArm:
 		pos[2] = min(max(self.z_limit[0],0), self.z_limit[1]) if not self.highest_start else self.z_limit[1] # 0
 		self.set_position(pos)
 
-	def set_position(self, pos, wait=False, use_roll=False, use_pitch=False, use_yaw=False): #this actually moves the arm
+	def set_position(self, pos, wait=False, use_roll=False, use_pitch=False, use_yaw=False):
 		pos = self.limit_pos(pos)
 		x = (pos[0] + self.zero[0])*100
 		y = (pos[1] + self.zero[1])*100

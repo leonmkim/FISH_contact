@@ -2,7 +2,7 @@ from collections import deque
 from typing import Any, NamedTuple
 
 import gym
-# import gym_envs
+import hand_envs
 from gym import Wrapper, spaces
 from gym.wrappers import FrameStack
 
@@ -10,9 +10,6 @@ import dm_env
 import numpy as np
 from dm_env import StepType, specs, TimeStep
 from dm_control.utils import rewards
-import pdb
-
-import cv2
 
 class RGBArrayAsObservationWrapper(dm_env.Environment):
 	"""
@@ -27,7 +24,7 @@ class RGBArrayAsObservationWrapper(dm_env.Environment):
 		self._height = height
 		self._env.reset()
 		dummy_obs = self._env.render(mode="rgb_array", width=self._width, height=self._height)
-		self.observation_space  = spaces.Box(low=0, high=255, shape=dummy_obs.shape, dtype=dummy_obs.dtype)
+		self.observation_space  = spaces.Box(low=0, high=255, shape=(height, width, 3), dtype=dummy_obs.dtype)
 		self.action_space = self._env.action_space
 		
 		# Action spec
@@ -48,6 +45,7 @@ class RGBArrayAsObservationWrapper(dm_env.Environment):
 													  minimum=0,
 													  maximum=255,
 													  name='observation')
+
 
 	def reset(self, **kwargs):
 		obs = {}
@@ -261,13 +259,15 @@ class ExtendedTimeStepWrapper(dm_env.Environment):
 								reward=time_step.reward or 0.0,
 								discount=time_step.discount or 1.0)
 
-	def _replace(self, time_step, observation=None, action=None, vinn_action=None,reward=None, discount=None):
+	def _replace(self, time_step, observation=None, action=None, reward=None, discount=None):
 		if observation is None:
 			observation = time_step.observation
 		if action is None:
 			action = time_step.action
 		if vinn_action is None:
 			vinn_action = time_step.vinn_action
+		if vinn_next_action is None:
+			vinn_next_action = time_step.vinn_next_action
 		if reward is None:
 			reward = time_step.reward
 		if discount is None:
@@ -275,7 +275,6 @@ class ExtendedTimeStepWrapper(dm_env.Environment):
 		return ExtendedTimeStep(observation=observation,
 								step_type=time_step.step_type,
 								action=action,
-								vinn_action=vinn_action,
 								reward=reward,
 								discount=discount)
 
@@ -290,13 +289,12 @@ class ExtendedTimeStepWrapper(dm_env.Environment):
 		return getattr(self._env, name)
 
 
-def make(name, height, width, frame_stack, action_repeat, seed, enable_arm, enable_gripper, enable_camera, x_limit, y_limit, z_limit, pitch, roll, keep_gripper_closed, **kwargs):
-	env = gym.make(name, height=height, width=width, enable_arm=enable_arm, enable_gripper=enable_gripper, enable_camera=enable_camera, 
-				   x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, pitch=pitch, roll=roll, keep_gripper_closed=keep_gripper_closed, **kwargs)
+def make(name, robot_name, host_address, camera_num, height, width, frame_stack, action_repeat, seed):
+	env = gym.make(name, robot_name=robot_name, host_address=host_address, camera_num=camera_num)
 	env.seed(seed)
 	
 	# add wrappers
-	env = RGBArrayAsObservationWrapper(env, width=224, height=224)
+	env = RGBArrayAsObservationWrapper(env, width=width, height=height)
 	env = ActionDTypeWrapper(env, np.float32)
 	env = ActionRepeatWrapper(env, action_repeat)
 	env = FrameStackWrapper(env, frame_stack)
