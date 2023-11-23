@@ -18,3 +18,9 @@ register(
 	entry_point='gym_envs.envs:RobotFlipEnv',
 	max_episode_steps=25,
 	) 
+
+register(
+	id='RobotBoxOpen-v1',
+	entry_point='gym_envs.envs:RobotBoxOpenEnv',
+	max_episode_steps=40,
+	)

@@ -72,7 +72,9 @@ class RobotEnv(gym.Env):
 
 	def step(self, action):
 		new_pos = self.arm.get_position()
-		new_pos[:3] += action[:3] * 0.25
+		new_pos[:3] += action[:3] * 0.25 # hardcoded de-normalization factor which should match the normalization factor from the expert demo
+		# actually in the derived classes, the action is between 0-1 and scales between the min/max of the expert data. 
+		
 		gripper_movement = 0
 		
 		if self.enable_gripper:

@@ -155,7 +155,7 @@ class Reach(BaseClass):
 
 			if action == 'start':
 				start = True
-			elif action =='stop' or step == episode_len:
+			elif action =='stop' or step == episode_len: # if stop, then pad the state and image obs with the last obs, and pad actions with zeros
 				for _ in range(episode_len - step):
 					state_obs.append(obs)
 					image_obs.append(image)
@@ -164,7 +164,7 @@ class Reach(BaseClass):
 				break
 			elif action == 'cancel':
 				return None, None, None, None
-			elif start and action in action_types:
+			elif start and action in action_types: #won't step unless there is some action
 				pos = pos[:3]
 				if action in action_types:
 					state_obs.append(obs)

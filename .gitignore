@@ -4,6 +4,9 @@
 # ignore files under FISH/expert_demos
 FISH/expert_demos/*
 
+# ignore files under FISH/exp_local
+FISH/exp_local/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

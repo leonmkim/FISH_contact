@@ -1,13 +1,15 @@
+#%%
+
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt 
-from xarm.wrapper import XArmAPI
-import imageio
-import glob
-import os
-import pickle
+# import imageio
+# import glob
+# import os
+# import pickle
 import pyrealsense2 as rs
 from scipy.ndimage import gaussian_filter
+#%%
 
 class Camera:
 	def __init__(self, width=640, height=480, view="side"):
@@ -102,3 +104,18 @@ class Camera:
 
 	def stop(self):
 		self.pipeline.stop()
+
+#%%
+cam = Camera(width=640, height=480, view="side")
+#%%
+# for i in range(100):
+img = cam.get_frame()
+print(img.shape)
+# reverse bgr to rgb
+color_im = cv2.cvtColor(img[:,:,:3].astype(np.uint8), cv2.COLOR_BGR2RGB)
+
+# cv2.imshow("img", img)
+# cv2.waitKey(1)
+# cam.stop()
+plt.imshow(color_im)
+#%%

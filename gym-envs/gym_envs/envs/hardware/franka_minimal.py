@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sys
 import time
 import numpy as np
@@ -18,68 +20,41 @@ from geometry_msgs.msg import Pose, PoseStamped, Wrench, Vector3, Quaternion, Po
 
 import rospy
 import ros_numpy
+
 from scipy.spatial.transform import Rotation as R
 
 class Franka:
 
-	def __init__(self, config_file='./robot.conf', home_displacement = (0,0,0), low_range=(1,1,0.2) , high_range=(2,2,1),
-				 keep_gripper_closed=False, highest_start=False, x_limit=None, y_limit=None, z_limit=None, yaw_limit=None,
-				 pitch = 0, roll=180, yaw=0, gripper_action_scale=200, start_at_the_back=False):
-		self.arm = None
-		self.gripper_max_open = 800
-		self.gripper_min_open = 0
-		self.zero = (206/100,0/100,120.5/100)	# Units: .1 meters 
-		self.home = home_displacement
-		self.keep_gripper_closed = keep_gripper_closed
-		self.highest_start = highest_start
-		self.low_range = low_range
-		self.high_range = high_range
-		self.joint_limits = None
-		self.ip = '192.168.1.246'
-		self.gripper_action_scale = gripper_action_scale
-		self.start_at_the_back = start_at_the_back
-
-		# Limits
-		self.x_limit = [0.5, 3.5] if x_limit is None else x_limit
-		self.y_limit = [-1.7, 1.3] if y_limit is None else y_limit
-		self.z_limit = [1.4, 3.4] if z_limit is None else z_limit
-		self.yaw_limit = None if yaw_limit is None else yaw_limit 
-
-		# Pitch value - Horizontal or vertical orientation
-		self.pitch = pitch
-		self.roll = roll
-		self.yaw = yaw
-
+	def __init__(self,):
 		# ROS stuff
 		###################################
-		rospy.init_node('franka_node') 
 
-		self.initial_pose_found = False
+		# self.initial_pose_found = False
 
-		self.pose_viz = PoseStamped()
+		# self.pose_viz = PoseStamped()
 
-		self.marker_sp = PoseWrenchStiff()
-		self.marker_sp.header.frame_id = 'panda_link0'
-		self.marker_sp.wrench_d = Wrench(Vector3(0., 0., 0.), Vector3(0., 0., 0.)) 
-		self.translation_stiffness = np.array([400., 400., 400.])
-		# self.rotation_stiffness = 1.3*self.translation_stiffness
-		self.rotation_stiffness = 1.6*self.translation_stiffness
-		# self.marker_sp.tau_filter_coeff = 0.06
-		self.marker_sp.tau_filter_coeff = 1.0
-		self.translation_damping = 2.*np.sqrt(self.translation_stiffness)
-		self.rotation_damping = 2.*np.sqrt(self.rotation_stiffness)
-        # reduce the rotation damping 
-		self.rotation_damping *= 0.0
-        # reduce the translation damping
-        # make this 50.0 for translation damping
-		self.translation_damping *= 1.0
-		self.marker_sp.cartesian_stiffness = tuple(np.concatenate((self.translation_stiffness, self.rotation_stiffness)))
-		self.marker_sp.cartesian_damping = tuple(np.concatenate((self.translation_damping, self.rotation_damping)))
+		# self.marker_sp = PoseWrenchStiff()
+		# self.marker_sp.header.frame_id = 'panda_link0'
+		# self.marker_sp.wrench_d = Wrench(Vector3(0., 0., 0.), Vector3(0., 0., 0.)) 
+		# self.translation_stiffness = np.array([400., 400., 400.])
+		# # self.rotation_stiffness = 1.3*self.translation_stiffness
+		# self.rotation_stiffness = 1.6*self.translation_stiffness
+		# # self.marker_sp.tau_filter_coeff = 0.06
+		# self.marker_sp.tau_filter_coeff = 1.0
+		# self.translation_damping = 2.*np.sqrt(self.translation_stiffness)
+		# self.rotation_damping = 2.*np.sqrt(self.rotation_stiffness)
+        # # reduce the rotation damping 
+		# self.rotation_damping *= 0.0
+        # # reduce the translation damping
+        # # make this 50.0 for translation damping
+		# self.translation_damping *= 1.0
+		# self.marker_sp.cartesian_stiffness = tuple(np.concatenate((self.translation_stiffness, self.rotation_stiffness)))
+		# self.marker_sp.cartesian_damping = tuple(np.concatenate((self.translation_damping, self.rotation_damping)))
 		
-		self.linear_vels = np.array([0., 0., 0.])
-		self.angular_vels = np.array([0., 0., 0.])
-		self.sp_xyz = np.array([0.,0.,0.])
-		self.xy_max_r = 0.75
+		# self.linear_vels = np.array([0., 0., 0.])
+		# self.angular_vels = np.array([0., 0., 0.])
+		# self.sp_xyz = np.array([0.,0.,0.])
+		# self.xy_max_r = 0.75
 	
 		# if self.use_gripper:
         #     # self.keyboard_teleop_sub = rospy.Subscriber("/panda/cmd_vel", Twist, self.keyboard_teleop_callback)
@@ -104,61 +79,82 @@ class Franka:
         #     self.gripper_stop_goal = StopGoal()
 	
 		# create a subscriber for the franka state
-		self.state_sub = rospy.Subscriber("/franka_state_controller/franka_states", FrankaStateCustom, self.franka_state_callback)
+		# self.state_sub = rospy.Subscriber("/panda/franka_state_controller_custom/franka_states", FrankaStateCustom, self.franka_state_callback)
+		self.state_sub = rospy.Subscriber("/franka_state_controller_custom/franka_states", FrankaStateCustom, self.franka_state_callback)
+		# self.state_sub = rospy.Subscriber("/panda/hybrid_impedance_wrench_controller/pose_wrench_desired", PoseWrenchStiff, self.franka_state_callback)
 		
-		# Get initial pose for the interactive marker
-		while not self.initial_pose_found:
+		# self.state_sub = rospy.Subscriber("/cmd_vel", Twist, self.franka_state_callback)
+		print('made callback')
+		
+		rospy.init_node('franka_node') 
+		print('init node')
+
+		# make sure sub is connected
+		print(self.state_sub.get_num_connections())
+		while self.state_sub.get_num_connections() == 0:
 			rospy.sleep(1)
+		print('connected')
 
-		# Publish visualization of where franka is moving
-		self.pose_desired_pub = rospy.Publisher("/hybrid_impedance_wrench_controller/pose_viz", PoseStamped, queue_size=1, tcp_nodelay=True)
+		# # Get initial pose for the interactive marker
+		# while not self.initial_pose_found:
+		# 	rospy.sleep(1)
 
-		# run desired pose wrench stiffness publisher
-		# self.sp_timer = rospy.Timer(rospy.Duration(1/self.hz), lambda msg: self.publisher_callback(msg))
-		# create a publisher for the franka command
-		self.pose_wrench_pub = rospy.Publisher(
-            "/panda/hybrid_impedance_wrench_controller/pose_wrench_desired", PoseWrenchStiff, queue_size=1)
-	
+		# # Publish visualization of where franka is moving
+		# self.pose_desired_pub = rospy.Publisher("/hybrid_impedance_wrench_controller/pose_viz", PoseStamped, queue_size=1, tcp_nodelay=True)
+
+		# # run desired pose wrench stiffness publisher
+		# # self.sp_timer = rospy.Timer(rospy.Duration(1/self.hz), lambda msg: self.publisher_callback(msg))
+		# # create a publisher for the franka command
+		# self.pose_wrench_pub = rospy.Publisher(
+        #     "/panda/hybrid_impedance_wrench_controller/pose_wrench_desired", PoseWrenchStiff, queue_size=1)
 	def franka_state_callback(self, msg):
 		'''
 		Get current franka state and set attributes of marker to current position
 		'''
-		self.marker_sp.pose_d = ros_numpy.msgify(Pose, np.transpose(np.reshape(msg.O_T_EE, (4, 4))))
+		# print('in franka_state_callback')
+		print(msg)
+		# self.marker_sp.pose_d = ros_numpy.msgify(Pose, np.transpose(np.reshape(msg.O_T_EE, (4, 4))))
+		# state = ros_numpy.numpify(msg.O_T_EE)
 
-		self.initial_pose_found = True
+		# self.robot_pose = ros_numpy.numpify(self.marker_sp.pose_d)
+		# print(state)
+
+		# self.initial_pose_found = True
 	
 	def publisher_callback(self, msg):
-		'''
-		Publish desired pose after calculating new location with velocity and bounds
-		'''
-		# marker_sp.pose_d.position.x = max(min(marker_sp.pose_d.position.x + linear_vels[0], position_limits[0][1]), position_limits[0][0])
+		# '''
+		# Publish desired pose after calculating new location with velocity and bounds
+		# '''
+		# # marker_sp.pose_d.position.x = max(min(marker_sp.pose_d.position.x + linear_vels[0], position_limits[0][1]), position_limits[0][0])
 
-		self.sp_xyz[0] = max(self.marker_sp.pose_d.position.x + self.linear_vels[0], self.position_limits[0, 0])
-		self.sp_xyz[1] = max(self.marker_sp.pose_d.position.y - self.linear_vels[1], self.position_limits[1, 0])
-		self.sp_xyz[2] = max(min(self.marker_sp.pose_d.position.z + self.linear_vels[2], self.position_limits[2, 1]), self.position_limits[2, 0])
+		# self.sp_xyz[0] = max(self.marker_sp.pose_d.position.x + self.linear_vels[0], self.position_limits[0, 0])
+		# self.sp_xyz[1] = max(self.marker_sp.pose_d.position.y - self.linear_vels[1], self.position_limits[1, 0])
+		# self.sp_xyz[2] = max(min(self.marker_sp.pose_d.position.z + self.linear_vels[2], self.position_limits[2, 1]), self.position_limits[2, 0])
 
-		# project onto workspace radius if outside workspace
-		xy_norm = np.linalg.norm(self.sp_xyz[:2])
-		if xy_norm > self.xy_max_r:
-			print('outside workspace!!')
-			# rescale onto the max radius circle
-			self.sp_xyz[:2] = (self.sp_xyz[:2]/xy_norm)*self.xy_max_r
+		# # project onto workspace radius if outside workspace
+		# xy_norm = np.linalg.norm(self.sp_xyz[:2])
+		# if xy_norm > self.xy_max_r:
+		# 	print('outside workspace!!')
+		# 	# rescale onto the max radius circle
+		# 	self.sp_xyz[:2] = (self.sp_xyz[:2]/xy_norm)*self.xy_max_r
 
-		self.marker_sp.pose_d.position = ros_numpy.msgify(Point, self.sp_xyz)
+		# self.marker_sp.pose_d.position = ros_numpy.msgify(Point, self.sp_xyz)
 
-		curr_ori = R.from_quat(ros_numpy.numpify(self.marker_sp.pose_d.orientation)) # both are in x,y,z,w order
-		r_vel = R.from_euler('x', self.angular_vels[0], degrees=False)
-		p_vel = R.from_euler('y', self.angular_vels[1], degrees=False)  
-		y_vel = R.from_euler('z', self.angular_vels[2], degrees=False)  
+		# curr_ori = R.from_quat(ros_numpy.numpify(self.marker_sp.pose_d.orientation)) # both are in x,y,z,w order
+		# r_vel = R.from_euler('x', self.angular_vels[0], degrees=False)
+		# p_vel = R.from_euler('y', self.angular_vels[1], degrees=False)  
+		# y_vel = R.from_euler('z', self.angular_vels[2], degrees=False)  
 
-		new_ori_q = (y_vel * p_vel * r_vel * curr_ori).as_quat()
-		self.marker_sp.pose_d.orientation = ros_numpy.msgify(Quaternion, new_ori_q)
-		self.marker_sp.cartesian_damping = tuple(np.concatenate((self.translation_damping, self.rotation_damping)))
+		# new_ori_q = (y_vel * p_vel * r_vel * curr_ori).as_quat()
+		# self.marker_sp.pose_d.orientation = ros_numpy.msgify(Quaternion, new_ori_q)
+		# self.marker_sp.cartesian_damping = tuple(np.concatenate((self.translation_damping, self.rotation_damping)))
 
-		self.marker_sp.header.stamp = rospy.Time.now()
+		# self.marker_sp.header.stamp = rospy.Time.now()
 
-		self.desired_pose_viz_callback()
-		self.pose_wrench_pub.publish(self.marker_sp)
+		# self.desired_pose_viz_callback()
+		# self.pose_wrench_pub.publish(self.marker_sp)
+		print('not implemented')
+		pass
 
 	def start_robot(self):
 		# if self.ip is None:
@@ -340,3 +336,18 @@ class Franka:
 			pos[5] = max(self.yaw_limit[0], pos[5])
 			pos[5] = min(self.yaw_limit[1], pos[5])
 		return pos
+
+if __name__ == '__main__':
+	arm = Franka()
+	# print('before spin')
+	rospy.spin()
+	# print('after spin')
+	# loop until ctrl-c without using rospy.spin()
+	# while not rospy.is_shutdown():
+		# do stuff
+		# print('doing stuff')
+		# time.sleep(1)
+		# pass
+
+	# arm.start_robot()
+	# arm

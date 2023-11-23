@@ -2,7 +2,7 @@ from collections import deque
 from typing import Any, NamedTuple
 
 import gym
-# import gym_envs
+import gym_envs
 from gym import Wrapper, spaces
 from gym.wrappers import FrameStack
 
