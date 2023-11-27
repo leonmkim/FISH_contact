@@ -6,14 +6,14 @@ import numpy as np
 import random
 from configparser import ConfigParser
 
-from franka_msgs.msg import FrankaStateCustom
-from franka_controllers.msg import PoseWrenchStiff
+# from franka_msgs.msg import FrankaStateCustom
+from franka_msgs.msg import FrankaState
 from geometry_msgs.msg import Pose, PoseStamped, Wrench, Vector3, Quaternion, Point, Twist
+# from franka_controllers.msg import PoseWrenchStiff
 # from interactive_markers.menu_handler import *
 # from dynamic_reconfigure.server import Server as DynReconfServer
 # from franka_controllers.cfg import compliance_paramConfig
 # from sensor_msgs.msg import Joy, JointState
-# import ros_numpy 
 # from scipy.spatial.transform import Rotation as R
 # import actionlib
 # from franka_gripper.msg import GraspAction, GraspGoal, MoveAction, MoveGoal, GraspEpsilon, StopAction, StopGoal
@@ -80,7 +80,7 @@ class Franka:
 	
 		# create a subscriber for the franka state
 		# self.state_sub = rospy.Subscriber("/panda/franka_state_controller_custom/franka_states", FrankaStateCustom, self.franka_state_callback)
-		self.state_sub = rospy.Subscriber("/franka_state_controller_custom/franka_states", FrankaStateCustom, self.franka_state_callback)
+		self.state_sub = rospy.Subscriber("/franka_state_controller/franka_states", FrankaState, self.franka_state_callback)
 		# self.state_sub = rospy.Subscriber("/panda/hybrid_impedance_wrench_controller/pose_wrench_desired", PoseWrenchStiff, self.franka_state_callback)
 		
 		# self.state_sub = rospy.Subscriber("/cmd_vel", Twist, self.franka_state_callback)
@@ -99,25 +99,29 @@ class Franka:
 		# while not self.initial_pose_found:
 		# 	rospy.sleep(1)
 
+		# self.O_T_EE = PoseStamped()
+
 		# # Publish visualization of where franka is moving
 		# self.pose_desired_pub = rospy.Publisher("/hybrid_impedance_wrench_controller/pose_viz", PoseStamped, queue_size=1, tcp_nodelay=True)
-
+		self.hz = 100.0
 		# # run desired pose wrench stiffness publisher
-		# # self.sp_timer = rospy.Timer(rospy.Duration(1/self.hz), lambda msg: self.publisher_callback(msg))
+		self.sp_timer = rospy.Timer(rospy.Duration(1/self.hz), lambda msg: self.publisher_callback(msg))
 		# # create a publisher for the franka command
 		# self.pose_wrench_pub = rospy.Publisher(
         #     "/panda/hybrid_impedance_wrench_controller/pose_wrench_desired", PoseWrenchStiff, queue_size=1)
+
+		# rospy.spin()
 	def franka_state_callback(self, msg):
 		'''
 		Get current franka state and set attributes of marker to current position
 		'''
 		# print('in franka_state_callback')
-		print(msg)
+		# print(msg)
 		# self.marker_sp.pose_d = ros_numpy.msgify(Pose, np.transpose(np.reshape(msg.O_T_EE, (4, 4))))
-		# state = ros_numpy.numpify(msg.O_T_EE)
+		state = np.transpose(np.reshape(msg.O_T_EE, (4, 4)))
 
 		# self.robot_pose = ros_numpy.numpify(self.marker_sp.pose_d)
-		# print(state)
+		print(state)
 
 		# self.initial_pose_found = True
 	
@@ -340,7 +344,7 @@ class Franka:
 if __name__ == '__main__':
 	arm = Franka()
 	# print('before spin')
-	rospy.spin()
+	# rospy.spin()
 	# print('after spin')
 	# loop until ctrl-c without using rospy.spin()
 	# while not rospy.is_shutdown():
