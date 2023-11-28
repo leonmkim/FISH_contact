@@ -22,13 +22,19 @@ from scipy.spatial.transform import Rotation as R
 
 class Franka:
 
-	def __init__(self, config_file='./robot.conf', home_displacement = (0,0,0), low_range=(1,1,0.2) , high_range=(2,2,1),
+	def __init__(self, config_file='./robot.conf', home_displacement = (0,0,0), 
+			#   low_range=(1,1,0.2), 
+			  low_range=(0.1,0.1,0.02), 
+			#   high_range=(2,2,1),
+			  high_range=(0.2,0.2,0.1),
 				 keep_gripper_closed=False, highest_start=False, x_limit=None, y_limit=None, z_limit=None, yaw_limit=None,
 				 pitch = 0, roll=180, yaw=0, gripper_action_scale=200, start_at_the_back=False):
 		# self.arm = None
 		self.gripper_max_open = 800
 		self.gripper_min_open = 0
-		self.zero = (206/100,0/100,120.5/100)	# Units: .1 meters 
+		# self.zero = (206/100,0/100,120.5/100)	# Units: .1 meters 
+		self.zero = (0.206,0.0,0.1205) 
+		# home is also relative to zero frame
 		self.home = home_displacement
 		self.keep_gripper_closed = keep_gripper_closed
 		self.highest_start = highest_start
@@ -40,9 +46,15 @@ class Franka:
 		self.start_at_the_back = start_at_the_back
 
 		# Limits
-		self.x_limit = [0.5, 3.5] if x_limit is None else x_limit
-		self.y_limit = [-1.7, 1.3] if y_limit is None else y_limit
-		self.z_limit = [1.4, 3.4] if z_limit is None else z_limit
+		# self.x_limit = [0.5, 3.5] if x_limit is None else x_limit
+		# self.y_limit = [-1.7, 1.3] if y_limit is None else y_limit
+		# self.z_limit = [1.4, 3.4] if z_limit is None else z_limit
+		# self.yaw_limit = None if yaw_limit is None else yaw_limit
+		
+		# THESE ARE RELATIVE TO ABOVE DEFINED ZERO FRAME 
+		self.x_limit = [0.05, 0.35] if x_limit is None else x_limit
+		self.y_limit = [-0.17, 0.13] if y_limit is None else y_limit
+		self.z_limit = [0.14, 0.34] if z_limit is None else z_limit
 		self.yaw_limit = None if yaw_limit is None else yaw_limit 
 
 		# Pitch value - Horizontal or vertical orientation
@@ -50,9 +62,64 @@ class Franka:
 		self.roll = roll
 		self.yaw = yaw
 
-		# ROS stuff
-		###################################
+		
+	def franka_state_callback(self, msg):
+		'''
+		Get current franka state and set attributes of marker to current position
+		'''
+		# self.marker_sp.pose_d = ros_numpy.msgify(Pose, np.transpose(np.reshape(msg.O_T_EE, (4, 4))))
+		if not self.initial_pose_found:
+			print('initial pose found')
+			self.initial_pose.pose = ros_numpy.msgify(Pose, np.transpose(np.reshape(msg.O_T_EE, (4, 4))))
 
+		self.initial_pose_found = True
+
+		self.current_pose.pose = ros_numpy.msgify(Pose, np.transpose(np.reshape(msg.O_T_EE, (4, 4))))
+		self.current_pose.header = msg.header
+
+	def test_publisher_callback(self):
+		'''
+		Just a test publisher moving in a circular motion in the xy plane
+		'''
+		motion_radius = 0.1
+		tangential_vel = 0.1
+		angular_vel = tangential_vel/motion_radius
+		
+		time = rospy.Time.now().to_sec()
+		self.sp_xyz[0] = self.initial_pose.pose.position.x + (motion_radius*np.cos(angular_vel*time))
+		self.sp_xyz[1] = self.initial_pose.pose.position.y + (motion_radius*np.sin(angular_vel*time))
+		self.sp_xyz[2] = self.initial_pose.pose.position.z 
+
+		self.controller_setpoint.pose.position = ros_numpy.msgify(Point, self.sp_xyz)
+
+		self.controller_setpoint.header.stamp = rospy.Time.now()
+
+		self.desired_pose_viz_callback()
+		self.desired_setpoint_pub.publish(self.controller_setpoint)
+
+	def desired_pose_viz_callback(self):
+		'''
+		Vizualize the desired pose
+		'''
+
+		self.pose_viz.header = self.controller_setpoint.header
+		self.pose_viz.pose.position = self.controller_setpoint.pose.position
+		self.pose_viz.pose.orientation = self.controller_setpoint.pose.orientation
+		
+		self.viz_pose_desired_pub.publish(self.pose_viz)
+
+	def start_robot(self):
+		# if self.ip is None:
+		# 	raise Exception('IP not provided.')
+		# self.arm = XArmAPI(self.ip, is_radian=False)
+		# self.arm.motion_enable(enable=False)
+		# self.arm.motion_enable(enable=True)
+		# if self.arm.error_code != 0:
+		# 	self.arm.clean_error()
+		# self.set_mode_and_state()
+		
+		###################################
+		# ROS stuff
 		rospy.init_node('franka_node') 
 
 		self.initial_pose_found = False
@@ -61,6 +128,7 @@ class Franka:
 
 		# self.marker_sp = PoseWrenchStiff()
 		self.initial_pose = PoseStamped()
+		self.current_pose = PoseStamped()
 
 		self.controller_setpoint = PoseStamped()
 		self.controller_setpoint.header.frame_id = 'panda_link0'
@@ -80,12 +148,8 @@ class Franka:
 		# self.marker_sp.cartesian_stiffness = tuple(np.concatenate((self.translation_stiffness, self.rotation_stiffness)))
 		# self.marker_sp.cartesian_damping = tuple(np.concatenate((self.translation_damping, self.rotation_damping)))
 		
-		self.position_limits = np.array([[0.2, 0.8], [-0.6, 0.6], [-0.1, 0.5]])
-		self.linear_vels = np.array([0., 0., 0.])
-		self.angular_vels = np.array([0., 0., 0.])
-		self.sp_xyz = np.array([0.,0.,0.])
-		self.xy_max_r = 0.75
-		self.hz = 100.0
+		# self.position_limits = np.array([[0.2, 0.8], [-0.6, 0.6], [-0.1, 0.5]]) FROM MY TELEOP CODE
+		# self.xy_max_r = 0.75 FROM MY TELEOP CODE
 	
 		# if self.use_gripper:
         #     # self.keyboard_teleop_sub = rospy.Subscriber("/panda/cmd_vel", Twist, self.keyboard_teleop_callback)
@@ -119,236 +183,146 @@ class Franka:
 
 		self.controller_setpoint.pose = copy.deepcopy(self.initial_pose.pose)
 		# Publish visualization of where franka is moving
-		self.pose_desired_pub = rospy.Publisher("/hybrid_impedance_wrench_controller/pose_viz", PoseStamped, queue_size=1, tcp_nodelay=True)
+		self.viz_pose_desired_pub = rospy.Publisher("/hybrid_impedance_wrench_controller/pose_viz", PoseStamped, queue_size=1, tcp_nodelay=True)
 
-		# run desired pose wrench stiffness publisher
-		self.sp_timer = rospy.Timer(rospy.Duration(1/self.hz), lambda msg: self.publisher_callback(msg))
 		# create a publisher for the franka command
 		# self.pose_wrench_pub = rospy.Publisher("/panda/hybrid_impedance_wrench_controller/pose_wrench_desired", PoseWrenchStiff, queue_size=1)
-		self.pose_wrench_pub = rospy.Publisher("/cartesian_impedance_example_controller/equilibrium_pose", PoseStamped, queue_size=1)
+		self.desired_setpoint_pub = rospy.Publisher("/cartesian_impedance_example_controller/equilibrium_pose", PoseStamped, queue_size=1)
 	
-		rospy.spin()
 		###################################
-
-	def franka_state_callback(self, msg):
-		'''
-		Get current franka state and set attributes of marker to current position
-		'''
-		# self.marker_sp.pose_d = ros_numpy.msgify(Pose, np.transpose(np.reshape(msg.O_T_EE, (4, 4))))
-		if not self.initial_pose_found:
-			print('initial pose found')
-			self.initial_pose.pose = ros_numpy.msgify(Pose, np.transpose(np.reshape(msg.O_T_EE, (4, 4))))
-
-		self.initial_pose_found = True
-	
-
-	def publisher_callback(self, msg):
-		'''
-		Publish desired pose after calculating new location with velocity and bounds
-		'''
-		# marker_sp.pose_d.position.x = max(min(marker_sp.pose_d.position.x + linear_vels[0], position_limits[0][1]), position_limits[0][0])
-
-		# self.linear_vels[0] = tangential_vel*np.cos(time.time()*2*np.pi/10)
-		# self.linear_vels[1] = tangential_vel*np.sin(time.time()*2*np.pi/10)
-		# self.linear_vels[2] = 0
-
-		# self.sp_xyz[0] = max(self.controller_setpoint.pose.position.x + self.linear_vels[0], self.position_limits[0, 0])
-		# self.sp_xyz[1] = max(self.controller_setpoint.pose.position.y - self.linear_vels[1], self.position_limits[1, 0])
-		# self.sp_xyz[2] = max(min(self.controller_setpoint.pose.position.z + self.linear_vels[2], self.position_limits[2, 1]), self.position_limits[2, 0])
-
-		# # project onto workspace radius if outside workspace
-		# xy_norm = np.linalg.norm(self.sp_xyz[:2])
-		# if xy_norm > self.xy_max_r:
-		# 	print('outside workspace!!')
-		# 	# rescale onto the max radius circle
-		# 	self.sp_xyz[:2] = (self.sp_xyz[:2]/xy_norm)*self.xy_max_r
-
-		self.controller_setpoint.pose.position = ros_numpy.msgify(Point, self.sp_xyz)
-
-		# curr_ori = R.from_quat(ros_numpy.numpify(self.marker_sp.pose_d.orientation)) # both are in x,y,z,w order
-		# r_vel = R.from_euler('x', self.angular_vels[0], degrees=False)
-		# p_vel = R.from_euler('y', self.angular_vels[1], degrees=False)  
-		# y_vel = R.from_euler('z', self.angular_vels[2], degrees=False)  
-
-		# new_ori_q = (y_vel * p_vel * r_vel * curr_ori).as_quat()
-		# self.marker_sp.pose_d.orientation = ros_numpy.msgify(Quaternion, new_ori_q)
-		# self.marker_sp.cartesian_damping = tuple(np.concatenate((self.translation_damping, self.rotation_damping)))
-
-		self.controller_setpoint.header.stamp = rospy.Time.now()
-
-		self.desired_pose_viz_callback()
-		self.pose_wrench_pub.publish(self.controller_setpoint)
-
-	def test_publisher_callback(self):
-		'''
-		Just a test publisher moving in a circular motion in the xy plane
-		'''
-		motion_radius = 0.1
-		tangential_vel = 0.1
-		angular_vel = tangential_vel/motion_radius
-		
-		time = rospy.Time.now().to_sec()
-		self.sp_xyz[0] = self.initial_pose.pose.position.x + (motion_radius*np.cos(angular_vel*time))
-		self.sp_xyz[1] = self.initial_pose.pose.position.y + (motion_radius*np.sin(angular_vel*time))
-		self.sp_xyz[2] = self.initial_pose.pose.position.z 
-
-		self.controller_setpoint.pose.position = ros_numpy.msgify(Point, self.sp_xyz)
-
-		self.controller_setpoint.header.stamp = rospy.Time.now()
-
-		self.desired_pose_viz_callback()
-		self.pose_wrench_pub.publish(self.controller_setpoint)
-
-	def desired_pose_viz_callback(self):
-		'''
-		Vizualize the desired pose
-		'''
-
-		self.pose_viz.header = self.controller_setpoint.header
-		self.pose_viz.pose.position = self.controller_setpoint.pose.position
-		self.pose_viz.pose.orientation = self.controller_setpoint.pose.orientation
-		
-		self.pose_desired_pub.publish(self.pose_viz)
-
-	def start_robot(self):
-		# if self.ip is None:
-		# 	raise Exception('IP not provided.')
-		# self.arm = XArmAPI(self.ip, is_radian=False)
-		# self.arm.motion_enable(enable=False)
-		# self.arm.motion_enable(enable=True)
-		# if self.arm.error_code != 0:
-		# 	self.arm.clean_error()
-		# self.set_mode_and_state()
-		print('not implemented')
-		pass 
 
 	def set_mode_and_state(self, mode=0, state=0):
 		# self.arm.set_mode(mode)
 		# self.arm.set_state(state=state)
-		print('not implemented')
-		pass 
+		raise NotImplementedError
 
 	def clear_errors(self):
 		# self.arm.clean_warn()
 		# self.arm.clean_error()
-		print('not implemented')
-		pass 
+		raise NotImplementedError
 
 	def has_error(self):
-		print('not implemented')
-		pass
 		# return self.arm.has_err_warn
-
+		raise NotImplementedError
+	
 	def reset(self, home = False, reset_at_home=True):
 		# if self.arm.has_err_warn:
 		# 	self.clear_errors()
-		# if home:
-		# 	if reset_at_home:
-		# 		self.move_to_home()
-		# 	else:
-		# 		self.move_to_zero()
+
+		if home:
+			if reset_at_home:
+				self.move_to_home()
+			else:
+				self.move_to_zero()
+
 		# 	if self.keep_gripper_closed:
 		# 		self.close_gripper_fully()
 		# 	else:
 		# 		self.open_gripper_fully()
-		print('not implemented')
-		pass
 
 	def move_to_home(self, open_gripper=False):
-		# pos = self.get_position()
-		# pos[0] = self.home[0]
-		# pos[1] = self.home[1]
-		# pos[2] = self.home[2]
-		# self.set_position(pos)
+		'''
+		retain current orientation but move to home position
+		'''
+		pos = self.get_position()
+		pos[0] = self.home[0]
+		pos[1] = self.home[1]
+		pos[2] = self.home[2]
+		self.set_position(pos)
+		
 		# if open_gripper and not self.keep_gripper_closed:
 		# 	self.open_gripper_fully()
-		print('not implemented')
-		pass
 	
 	def set_random_pos(self):
+		'''
+		retain current orientation but move to random position
+		'''
 		# self.clear_errors()
 		# self.set_mode_and_state()
-		# pos = self.get_position()
+		pos = self.get_position()
 		
-		# # Move up
-		# pos[2] = self.z_limit[1]
-		# self.set_position(pos)
+		# Move up
+		pos[2] = self.z_limit[1]
+		self.set_position(pos)
 
-		# # Set random pos
-		# x_disp = self.low_range[0] + np.random.rand()*(self.high_range[0] - self.low_range[0])
-		# y_disp = self.low_range[1] + np.random.rand()*(self.high_range[1] - self.low_range[1])
-		# z_disp = self.low_range[2] + np.random.rand()*(self.high_range[2] - self.low_range[2])
+		# Set random pos
+		x_disp = self.low_range[0] + np.random.rand()*(self.high_range[0] - self.low_range[0])
+		y_disp = self.low_range[1] + np.random.rand()*(self.high_range[1] - self.low_range[1])
+		z_disp = self.low_range[2] + np.random.rand()*(self.high_range[2] - self.low_range[2])
 		
-		# pos[0] = self.home[0] + x_disp * np.random.choice([-1,1])		# Here we sample in a square ring around the home 
-		# pos[1] = self.home[1] + y_disp * np.random.choice([-1,1])		# Here we sample in a square ring around the home 
-		# pos[2] = self.home[2] + z_disp if not self.highest_start else self.z_limit[1] 									# For z we jsut sample from [a,b]
-		# self.set_position(pos)
+		pos[0] = self.home[0] + x_disp * np.random.choice([-1,1])		# Here we sample in a square ring around the home 
+		pos[1] = self.home[1] + y_disp * np.random.choice([-1,1])		# Here we sample in a square ring around the home 
+		pos[2] = self.home[2] + z_disp if not self.highest_start else self.z_limit[1] 									# For z we jsut sample from [a,b]
+		self.set_position(pos)
+		
 		# if self.keep_gripper_closed:
 		# 	self.close_gripper_fully()
 		# else:
 		# 	self.open_gripper_fully()
-		print('not implemented')
-		pass 
 
 	def move_to_zero(self):
-		# pos = self.get_position()
-		# pos[0] = min(max(self.x_limit[0],0), self.x_limit[1])# 0
-		# pos[1] = min(max(self.y_limit[0],0), self.y_limit[1])# 0
-		# pos[2] = min(max(self.z_limit[0],0), self.z_limit[1]) if not self.highest_start else self.z_limit[1] # 0
-		# self.set_position(pos)
+		'''
+		retain current orientation but move to the user defined zero position
+		'''
+		pos = self.get_position()
+		# set 0 or the limit if 0 is outside
+		pos[0] = min(max(self.x_limit[0],0), self.x_limit[1])# 0
+		pos[1] = min(max(self.y_limit[0],0), self.y_limit[1])# 0
+		# set at upper z limit if highest start is true
+		pos[2] = min(max(self.z_limit[0],0), self.z_limit[1]) if not self.highest_start else self.z_limit[1] # 0
 
-		print('not implemented')
-		pass 
+		self.set_position(pos)
 
 	def set_position(self, pos, wait=False, use_roll=False, use_pitch=False, use_yaw=False):
-		# pos = self.limit_pos(pos)
-		# x = (pos[0] + self.zero[0])*100
-		# y = (pos[1] + self.zero[1])*100
-		# z = (pos[2] + self.zero[2])*100
-		# roll = pos[3] if use_roll else self.roll
-		# pitch = pos[4] if use_pitch else self.pitch
-		# yaw = pos[5] if use_yaw else self.yaw
+		pos = self.limit_pos(pos)
+		x = (pos[0] + self.zero[0])
+		y = (pos[1] + self.zero[1])
+		z = (pos[2] + self.zero[2])
+		roll = pos[3] if use_roll else self.roll
+		pitch = pos[4] if use_pitch else self.pitch
+		yaw = pos[5] if use_yaw else self.yaw
 		# self.arm.set_position(x=x, y=y, z=z, roll=roll, pitch=pitch, yaw=yaw, wait=wait)
 
-		print('not implemented')
-		pass 
+		# convert to Pose and publish
+		self.controller_setpoint.pose.position = ros_numpy.msgify(Point, np.array([x,y,z]))
+		self.controller_setpoint.pose.orientation = ros_numpy.msgify(Quaternion, R.from_euler('xyz', [roll, pitch, yaw], degrees=True).as_quat())
+		self.controller_setpoint.header.stamp = rospy.Time.now()
+
+		self.desired_pose_viz_callback()
+		self.desired_setpoint_pub.publish(self.controller_setpoint)
 
 	def get_position(self):
-		# pos = self.arm.get_position()[1]
-		# x = (pos[0]/100.0 - self.zero[0])
-		# y = (pos[1]/100.0 - self.zero[1])
-		# z = (pos[2]/100.0 - self.zero[2])
-		# return np.array([x,y,z, pos[3], pos[4], pos[5]]).astype(np.float32)
-		print('not implemented')
-		pass 
+		pos = ros_numpy.numpify(self.current_pose.pose.position)
+		rpy = R.from_quat(ros_numpy.numpify(self.current_pose.pose.orientation)).as_euler('xyz', degrees=True)
+		x = (pos[0] - self.zero[0])
+		y = (pos[1] - self.zero[1])
+		z = (pos[2] - self.zero[2])
+		return np.array([x,y,z, rpy[0], rpy[1], rpy[2]]).astype(np.float32)
 
 	def get_gripper_position(self):
 		# code, pos = self.arm.get_gripper_position()
 		# if code!=0:
 		# 	raise Exception('Correct gripper angle cannot be obtained.')
 		# return pos
-		print('not implemented')
-		pass 
+		raise NotImplementedError
 
 	def open_gripper_fully(self):
 		# self.set_gripper_position(self.gripper_max_open)
-		print('not implemented')
-		pass 
+		raise NotImplementedError
+
 
 	def close_gripper_fully(self):
 		# self.set_gripper_position(self.gripper_min_open)
-		print('not implemented')
-		pass 
+		raise NotImplementedError
+		
 
 	def open_gripper(self):
 		# self.set_gripper_position(self.get_gripper_position() + self.gripper_action_scale)
-		print('not implemented')
-		pass 
+		raise NotImplementedError
 
 	def close_gripper(self):
 		# self.set_gripper_position(self.get_gripper_position() - self.gripper_action_scale)
-		print('not implemented')
-		pass 
+		raise NotImplementedError
 
 	def set_gripper_position(self, pos, wait=False):
 		'''
@@ -359,24 +333,22 @@ class Franka:
 		# if pos>self.gripper_max_open:
 		# 	pos = self.gripper_max_open
 		# self.arm.set_gripper_position(pos, wait=wait, auto_enable=True)
-		print('not implemented')
-		pass 
+		raise NotImplementedError
 
 	def get_servo_angle(self):
 		# code, angles = self.arm.get_servo_angle()
 		# if code!=0:
 			# raise Exception('Correct servo angles cannot be obtained.')
 		# return angles
-		print('not implemented')
-		pass 
+		raise NotImplementedError
+
 
 	def set_servo_angle(self, angles, is_radian=None):
 		'''
 		angles: List of length 8
 		'''
 		# self.arm.set_servo_angle(angle=angles, is_radian=is_radian)
-		print('not implemented')
-		pass 
+		raise NotImplementedError
 	
 	def limit_pos(self, pos):
 		pos[0] = max(self.x_limit[0], pos[0])
@@ -392,3 +364,10 @@ class Franka:
 
 if __name__ == '__main__':
 	arm = Franka()
+	arm.start_robot()
+	arm.move_to_zero()
+	time.sleep(5)
+
+	# sleep
+	arm.set_random_pos()
+	time.sleep(5)

@@ -105,17 +105,17 @@ class Camera:
 	def stop(self):
 		self.pipeline.stop()
 
-#%%
-cam = Camera(width=640, height=480, view="side")
-#%%
-# for i in range(100):
-img = cam.get_frame()
-print(img.shape)
-# reverse bgr to rgb
-color_im = cv2.cvtColor(img[:,:,:3].astype(np.uint8), cv2.COLOR_BGR2RGB)
+# #%%
+# cam = Camera(width=640, height=480, view="side")
+# #%%
+# # for i in range(100):
+# img = cam.get_frame()
+# print(img.shape)
+# # reverse bgr to rgb
+# color_im = cv2.cvtColor(img[:,:,:3].astype(np.uint8), cv2.COLOR_BGR2RGB)
 
-# cv2.imshow("img", img)
-# cv2.waitKey(1)
-# cam.stop()
-plt.imshow(color_im)
-#%%
+# # cv2.imshow("img", img)
+# # cv2.waitKey(1)
+# # cam.stop()
+# plt.imshow(color_im)
+# #%%
