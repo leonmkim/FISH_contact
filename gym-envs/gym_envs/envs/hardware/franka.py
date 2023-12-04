@@ -4,9 +4,9 @@ import numpy as np
 import random
 from configparser import ConfigParser
 
-# from franka_msgs.msg import FrankaStateCustom
-from franka_msgs.msg import FrankaState
-# from franka_controllers.msg import PoseWrenchStiff
+from franka_msgs.msg import FrankaStateCustom
+# from franka_msgs.msg import FrankaState
+from franka_controllers.msg import PoseWrenchStiff
 from geometry_msgs.msg import Pose, PoseStamped, Wrench, Vector3, Quaternion, Point, Twist
 # from interactive_markers.menu_handler import *
 # from dynamic_reconfigure.server import Server as DynReconfServer
@@ -22,13 +22,17 @@ from scipy.spatial.transform import Rotation as R
 
 class Franka:
 
-	def __init__(self, config_file='./robot.conf', home_displacement = (0,0,0), 
+	def __init__(self, config_file='./robot.conf', 
+			  home_displacement = (0,0,0), 
 			#   low_range=(1,1,0.2), 
 			  low_range=(0.1,0.1,0.02), 
 			#   high_range=(2,2,1),
 			  high_range=(0.2,0.2,0.1),
 				 keep_gripper_closed=False, highest_start=False, x_limit=None, y_limit=None, z_limit=None, yaw_limit=None,
-				 pitch = 0, roll=180, yaw=0, gripper_action_scale=200, start_at_the_back=False):
+				 pitch = 0, roll=180, yaw=0, gripper_action_scale=200, start_at_the_back=False,
+				 in_sim=True,
+				 ):
+		self.in_sim = in_sim
 		# self.arm = None
 		self.gripper_max_open = 800
 		self.gripper_min_open = 0
@@ -62,7 +66,6 @@ class Franka:
 		self.roll = roll
 		self.yaw = yaw
 
-		
 	def franka_state_callback(self, msg):
 		'''
 		Get current franka state and set attributes of marker to current position
@@ -90,7 +93,7 @@ class Franka:
 		self.sp_xyz[1] = self.initial_pose.pose.position.y + (motion_radius*np.sin(angular_vel*time))
 		self.sp_xyz[2] = self.initial_pose.pose.position.z 
 
-		self.controller_setpoint.pose.position = ros_numpy.msgify(Point, self.sp_xyz)
+		self.controller_setpoint.pose_d.position = ros_numpy.msgify(Point, self.sp_xyz)
 
 		self.controller_setpoint.header.stamp = rospy.Time.now()
 
@@ -103,8 +106,8 @@ class Franka:
 		'''
 
 		self.pose_viz.header = self.controller_setpoint.header
-		self.pose_viz.pose.position = self.controller_setpoint.pose.position
-		self.pose_viz.pose.orientation = self.controller_setpoint.pose.orientation
+		self.pose_viz.pose.position = self.controller_setpoint.pose_d.position
+		self.pose_viz.pose.orientation = self.controller_setpoint.pose_d.orientation
 		
 		self.viz_pose_desired_pub.publish(self.pose_viz)
 
@@ -120,7 +123,7 @@ class Franka:
 		
 		###################################
 		# ROS stuff
-		rospy.init_node('franka_node') 
+		rospy.init_node('franka_gym_node') 
 
 		self.initial_pose_found = False
 
@@ -130,23 +133,38 @@ class Franka:
 		self.initial_pose = PoseStamped()
 		self.current_pose = PoseStamped()
 
-		self.controller_setpoint = PoseStamped()
+		# self.controller_setpoint = PoseStamped()
+		self.controller_setpoint = PoseWrenchStiff()
 		self.controller_setpoint.header.frame_id = 'panda_link0'
-		# self.marker_sp.wrench_d = Wrench(Vector3(0., 0., 0.), Vector3(0., 0., 0.)) 
-		# self.translation_stiffness = np.array([400., 400., 400.])
-		# # self.rotation_stiffness = 1.3*self.translation_stiffness
-		# self.rotation_stiffness = 1.6*self.translation_stiffness
-		# # self.marker_sp.tau_filter_coeff = 0.06
-		# self.marker_sp.tau_filter_coeff = 1.0
-		# self.translation_damping = 2.*np.sqrt(self.translation_stiffness)
-		# self.rotation_damping = 2.*np.sqrt(self.rotation_stiffness)
-        # # reduce the rotation damping 
-		# self.rotation_damping *= 0.0
-        # # reduce the translation damping
-        # # make this 50.0 for translation damping
-		# self.translation_damping *= 1.0
-		# self.marker_sp.cartesian_stiffness = tuple(np.concatenate((self.translation_stiffness, self.rotation_stiffness)))
-		# self.marker_sp.cartesian_damping = tuple(np.concatenate((self.translation_damping, self.rotation_damping)))
+		self.controller_setpoint.wrench_d = Wrench(Vector3(0., 0., 0.), Vector3(0., 0., 0.)) 
+		if self.in_sim:
+			# self.translation_stiffness = np.array([500., 500., 500.])
+			# self.rotation_stiffness = 1.*self.translation_stiffness
+			# copied over from the contact generation policy
+			self.translation_stiffness = np.array([200., 200., 200.])
+			self.rotation_stiffness = np.array([10., 10., 10.])
+			self.controller_setpoint.tau_filter_coeff = 0.05 # NEED TO SET THIS NONZERO! Otherwise controller does nothing
+		else:
+			# self.marker_sp.cartesian_stiffness = (500., 500., 500., 1500., 1200., 1500.) # for stiff tracking, 200 for trans 10 for orientation...
+			# self.translation_stiffness = np.array([400., 400., 400.])
+			self.translation_stiffness = np.array([400., 400., 400.])
+			# self.rotation_stiffness = 1.3*self.translation_stiffness
+			self.rotation_stiffness = 1.6*self.translation_stiffness
+			# self.marker_sp.tau_filter_coeff = 0.06
+			self.controller_setpoint.tau_filter_coeff = 1.0
+	
+		self.translation_damping = 2.*np.sqrt(self.translation_stiffness)
+		self.rotation_damping = 2.*np.sqrt(self.rotation_stiffness)
+
+		if not self.in_sim:
+			# reduce the rotation damping 
+			self.rotation_damping *= 0.0	
+			# reduce the translation damping
+			# make this 50.0 for translation damping
+			self.translation_damping *= 1.0
+
+		self.controller_setpoint.cartesian_stiffness = tuple(np.concatenate((self.translation_stiffness, self.rotation_stiffness)))
+		self.controller_setpoint.cartesian_damping = tuple(np.concatenate((self.translation_damping, self.rotation_damping)))
 		
 		# self.position_limits = np.array([[0.2, 0.8], [-0.6, 0.6], [-0.1, 0.5]]) FROM MY TELEOP CODE
 		# self.xy_max_r = 0.75 FROM MY TELEOP CODE
@@ -174,20 +192,19 @@ class Franka:
         #     self.gripper_stop_goal = StopGoal()
 	
 		# create a subscriber for the franka state
-		# self.state_sub = rospy.Subscriber("/franka_state_controller/franka_states", FrankaStateCustom, self.franka_state_callback)
-		self.state_sub = rospy.Subscriber("/franka_state_controller/franka_states", FrankaState, self.franka_state_callback)
+		self.state_sub = rospy.Subscriber("/panda/franka_state_controller_custom/franka_states", FrankaStateCustom, self.franka_state_callback)
 		
 		# Get initial pose for the interactive marker
 		while not self.initial_pose_found:
 			rospy.sleep(1)
 
-		self.controller_setpoint.pose = copy.deepcopy(self.initial_pose.pose)
+		self.controller_setpoint.pose_d = copy.deepcopy(self.initial_pose.pose)
 		# Publish visualization of where franka is moving
-		self.viz_pose_desired_pub = rospy.Publisher("/hybrid_impedance_wrench_controller/pose_viz", PoseStamped, queue_size=1, tcp_nodelay=True)
+		self.viz_pose_desired_pub = rospy.Publisher("/panda/hybrid_impedance_wrench_controller/pose_viz", PoseStamped, queue_size=1, tcp_nodelay=True)
 
 		# create a publisher for the franka command
-		# self.pose_wrench_pub = rospy.Publisher("/panda/hybrid_impedance_wrench_controller/pose_wrench_desired", PoseWrenchStiff, queue_size=1)
-		self.desired_setpoint_pub = rospy.Publisher("/cartesian_impedance_example_controller/equilibrium_pose", PoseStamped, queue_size=1)
+		self.desired_setpoint_pub = rospy.Publisher("/panda/hybrid_impedance_wrench_controller/pose_wrench_desired", PoseWrenchStiff, queue_size=1)
+		# self.desired_setpoint_pub = rospy.Publisher("/cartesian_impedance_example_controller/equilibrium_pose", PoseStamped, queue_size=1)
 	
 		###################################
 
@@ -223,6 +240,8 @@ class Franka:
 	def move_to_home(self, open_gripper=False):
 		'''
 		retain current orientation but move to home position
+
+		ON REAL MAY REQUIRE SOME MOTION PLANNING TO AVOID HITTING STUFF
 		'''
 		pos = self.get_position()
 		pos[0] = self.home[0]
@@ -284,8 +303,8 @@ class Franka:
 		# self.arm.set_position(x=x, y=y, z=z, roll=roll, pitch=pitch, yaw=yaw, wait=wait)
 
 		# convert to Pose and publish
-		self.controller_setpoint.pose.position = ros_numpy.msgify(Point, np.array([x,y,z]))
-		self.controller_setpoint.pose.orientation = ros_numpy.msgify(Quaternion, R.from_euler('xyz', [roll, pitch, yaw], degrees=True).as_quat())
+		self.controller_setpoint.pose_d.position = ros_numpy.msgify(Point, np.array([x,y,z]))
+		self.controller_setpoint.pose_d.orientation = ros_numpy.msgify(Quaternion, R.from_euler('xyz', [roll, pitch, yaw], degrees=True).as_quat())
 		self.controller_setpoint.header.stamp = rospy.Time.now()
 
 		self.desired_pose_viz_callback()

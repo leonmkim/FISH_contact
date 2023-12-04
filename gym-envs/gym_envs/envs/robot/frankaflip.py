@@ -41,7 +41,7 @@ class FrankaFlipEnv(franka_env.FrankaEnv):
 			self.random_limits = [
 				[self.x_limit[0], self.x_limit[1]],
 				# [1.86, self.y_limit[1]],
-				# upper y_lim provided is .12, meaning this is only 1.4 cm range. This is used in the hacky looking limit_pos method below
+				# upper y_lim provided is .12. This is used in the hacky looking limit_pos method below
 				[0.186, self.y_limit[1]], 
 				[self.z_limit[0], self.z_limit[1]]
 			]
@@ -156,9 +156,9 @@ class FrankaFlipEnv(franka_env.FrankaEnv):
 		self.arm.arm.set_position(x=x, y=y, z=z, roll=pos[3], pitch=pos[4], yaw=pos[5], wait=wait)
 
 	def limit_pos(self, pos):
-		# is this a hack to keep spatula near the bagel when close to the pan?
+		# is this a hack to keep spatula near the centerline of pan?
 		if pos[2] <= self.z_pos_limit:
-			pos[1] = max(self.random_limits[1][0], pos[1])
+			pos[1] = max(self.random_limits[1][0], pos[1]) #0.186 - 0.12
 			pos[1] = min(self.random_limits[1][1], pos[1])
 		else:
 			pos[1] = max(self.y_limit[0], pos[1])
@@ -174,7 +174,7 @@ class FrankaFlipEnv(franka_env.FrankaEnv):
 		pos[2] = min(self.z_limit[1], pos[2])
 
 		pos[3] = min(max(110, pos[3]), 136)
-		# is this part of their "guided" exploration that they just hard-coded?
+		# another hack to prevent rotation in task-irrelevant axes?
 		pos[4] = min(max(-2, pos[4]), 2) 
 		pos[5] = min(max(-2, pos[5]), 2)
 

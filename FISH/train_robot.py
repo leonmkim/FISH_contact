@@ -181,12 +181,12 @@ class WorkspaceIL:
 
 		episode_step, episode_reward = 0, 0
 
-		if 'vinn' in repr(self.agent) or 'openloop' in repr(self.agent):
+		if 'vinn' in repr(self.agent) or 'openloop' in repr(self.agent): # Leon: this is run for potil_vinn_offset
 			expert_demo = np.concatenate(self.expert_demo, axis=0)
 			expert_action = np.concatenate(self.expert_action, axis=0)
-			self.agent.save_representations(expert_demo, expert_action, 128)
+			self.agent.save_representations(expert_demo, expert_action, 128) # Leon: this runs expert demo through vinn_encoder and saves the representations
 
-		if repr(self.agent) not in ['bc', 'vinn']:
+		if repr(self.agent) not in ['bc', 'vinn']: # Leon: this is run for potil_vinn_offset
 			time_steps = list()
 			observations = list()
 			actions = list()
@@ -196,22 +196,22 @@ class WorkspaceIL:
 			observations.append(time_step.observation[self.cfg.obs_type])
 			actions.append(time_step.action)
 		
-		if 'potil' in repr(self.agent):
+		if 'potil' in repr(self.agent): # Leon: this is run for potil_vinn_offset. Not sure what this does
 			if self.agent.auto_rew_scale:
 				self.agent.sinkhorn_rew_scale = 1.  # Set after first episode
 
-		if repr(self.agent) not in  ['bc', 'vinn']:
+		if repr(self.agent) not in  ['bc', 'vinn']: # Leon: this is run for potil_vinn_offset
 			self.train_video_recorder.init(time_step.observation[self.cfg.obs_type])
 		metrics = None
 		while train_until_step(self.global_step):
-			if repr(self.agent) not in  ['bc', 'vinn'] and time_step.last():
+			if repr(self.agent) not in  ['bc', 'vinn'] and time_step.last(): # Leon: this is run for potil_vinn_offset
 				self._global_episode += 1
 				if self._global_episode % 10 == 0:
 					self.train_video_recorder.save(f'{self.global_frame}.mp4')
 				# wait until all the metrics schema is populated
 				observations = np.stack(observations, 0)
 				actions = np.stack(actions, 0)
-				if 'potil' in repr(self.agent):
+				if 'potil' in repr(self.agent): # Leon: this is run for potil_vinn_offset
 					new_rewards = self.agent.ot_rewarder(
 						observations, self.expert_demo, self.global_step)
 					new_rewards_sum = np.sum(new_rewards)
@@ -248,7 +248,7 @@ class WorkspaceIL:
 						log('episode', self.global_episode)
 						log('buffer_size', len(self.replay_storage))
 						log('step', self.global_step)
-						if 'potil' in repr(self.agent) or repr(self.agent) == 'dac':
+						if 'potil' in repr(self.agent) or repr(self.agent) == 'dac': 
 								log('expert_reward', self.expert_reward)
 								log('imitation_reward', new_rewards_sum)
 

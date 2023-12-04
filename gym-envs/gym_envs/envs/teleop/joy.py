@@ -283,6 +283,7 @@ if __name__ == "__main__":
 			  scale_factor_rotation=120,
 			  motion_scale_change=0.03,
 			  sleep=0.4)
+	
 	while(True):
 		joy.detect_event()
 		pos, action = joy.move()

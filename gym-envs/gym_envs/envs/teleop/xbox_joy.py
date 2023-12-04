@@ -1,9 +1,11 @@
 import time
 import pygame
 
-from robot import XArm
+# import from ../hardware/franka.py Franka
+from gym_envs.envs.hardware.franka import Franka
 
-class Joy:
+
+class XboxJoy:
 
 	def __init__(self,
 				 arm,
@@ -49,7 +51,7 @@ class Joy:
 		self.motion_scale = 0
 
 	def init_arm(self, reset=True):
-		self.arm = XArm()
+		self.arm = Franka()
 		self.arm.start_robot()
 
 		if reset:
@@ -81,14 +83,13 @@ class Joy:
 				elif event.axis==4:
 					self.up = False
 					self.down = False
-				elif event.axis==3 and event.value<-0.5: # this is left direction on the right thumbstick
-					self.rotate_arm_cw = True
-				elif event.axis==3 and event.value>0.5: # this is right direction on the right thumbstick
-					self.rotate_arm_ccw = True
-				elif event.axis==3:
-					self.rotate_arm_cw = False
-					self.rotate_arm_ccw = False
-				
+				# elif event.axis==3 and event.value<-0.5: # this is left direction on the right thumbstick
+				# 	self.rotate_arm_cw = True
+				# elif event.axis==3 and event.value>0.5: # this is right direction on the right thumbstick
+				# 	self.rotate_arm_ccw = True
+				# elif event.axis==3:
+				# 	self.rotate_arm_cw = False
+				# 	self.rotate_arm_ccw = False
 
 			if event.type == pygame.JOYBUTTONDOWN:
 				if event.button == 0:			# A
@@ -122,10 +123,10 @@ class Joy:
 					self.arm.reset(home=True)
 
 	def move(self):
-		if self.arm.has_error():
-			self.arm.clear_errors()
-			self.arm.set_mode_and_state()
-			self._move_up()
+		# if self.arm.has_error():
+		# 	self.arm.clear_errors()
+		# 	self.arm.set_mode_and_state()
+		# 	self._move_up()
 		pos, action = None, None
 		if self.forward:
 			pos = self._move_forward()
@@ -192,7 +193,6 @@ class Joy:
 			pos = self._rotate_arm_ccw()
 			action = 'rotate_arm_ccw'
 
-
 		return pos, action		
 	
 	def _move_forward(self):
@@ -249,40 +249,47 @@ class Joy:
 		time.sleep(self.sleep/2)
 		return pos
 
-	def _bring_arm_up(self):
-		angles = self.arm.get_servo_angle()
-		angles[5] -= self.scale_factor_rotation
-		self.arm.set_servo_angle(angles, is_radian=self.is_radian)
-		time.sleep(self.sleep)
-		return angles[5]
-
-	def _bring_arm_down(self):
-		angles = self.arm.get_servo_angle()
-		angles[5] += self.scale_factor_rotation
-		self.arm.set_servo_angle(angles, is_radian=self.is_radian)
-		time.sleep(self.sleep)
-		return angles[5]
-
-	def _rotate_arm_cw(self):
+	def _rotate_arm_cw(self): # Leon: actuates the 7th joint which rotates the end-effector clockwise
 		angles = self.arm.get_servo_angle()
 		angles[6] -= self.scale_factor_rotation
 		self.arm.set_servo_angle(angles, is_radian=self.is_radian)
 		time.sleep(self.sleep)
 		return angles[6]
 
-	def _rotate_arm_ccw(self):
+	def _rotate_arm_ccw(self): # Leon: actuates the 7th joint which rotates the end-effector counter-clockwise
 		angles = self.arm.get_servo_angle()
 		angles[6] += self.scale_factor_rotation
 		self.arm.set_servo_angle(angles, is_radian=self.is_radian)
 		time.sleep(self.sleep)
 		return angles[6]
 
+	# Leon: these aren't even used in the original code
+	def _bring_arm_up(self): # Leon: actuates the 6th joint which pitches the end-effector up
+		angles = self.arm.get_servo_angle()
+		angles[5] -= self.scale_factor_rotation
+		self.arm.set_servo_angle(angles, is_radian=self.is_radian)
+		time.sleep(self.sleep)
+		return angles[5]
+
+	def _bring_arm_down(self): # Leon: actuates the 6th joint which pitches the end-effector down
+		angles = self.arm.get_servo_angle()
+		angles[5] += self.scale_factor_rotation
+		self.arm.set_servo_angle(angles, is_radian=self.is_radian)
+		time.sleep(self.sleep)
+		return angles[5]
+
 if __name__ == "__main__":
-	joy = Joy(scale_factor_pos=0.15,
+	import rospy
+
+	arm = Franka()
+	arm.start_robot()
+	joy = XboxJoy(arm, scale_factor_pos=0.15,
 			  scale_factor_gripper=50, 
 			  scale_factor_rotation=120,
 			  motion_scale_change=0.03,
 			  sleep=0.4)
-	while(True):
+	# loop but catch ctrl+c
+	while not rospy.is_shutdown():
 		joy.detect_event()
 		pos, action = joy.move()
+		# time.sleep(0.5)
