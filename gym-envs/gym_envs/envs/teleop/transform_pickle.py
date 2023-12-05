@@ -32,7 +32,7 @@ for index in range(0,num_traj):
 	states_list.append(np.array(traj['state_observation'], dtype=np.float32))
 	action = np.array(traj['action'], dtype=np.float32)
 
-	action[:,:3] /= 0.25 # just for normalizing the actions (max action is hardcoded here as 0.25 but it isn't necessarily )
+	action[:,:3] /= 0.25 # just for normalizing the actions in position (max action is hardcoded here as 0.25 but it isn't necessarily )
 	actions_list.append(action)
 	rewards_list.append(np.array(traj['reward'], dtype=np.float32))
 

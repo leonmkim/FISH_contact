@@ -105,11 +105,11 @@ class Franka:
 		Vizualize the desired pose
 		'''
 
-		self.pose_viz.header = self.controller_setpoint.header
-		self.pose_viz.pose.position = self.controller_setpoint.pose_d.position
-		self.pose_viz.pose.orientation = self.controller_setpoint.pose_d.orientation
+		self.desired_pose_viz.header = self.controller_setpoint.header
+		self.desired_pose_viz.pose.position = self.controller_setpoint.pose_d.position
+		self.desired_pose_viz.pose.orientation = self.controller_setpoint.pose_d.orientation
 		
-		self.viz_pose_desired_pub.publish(self.pose_viz)
+		self.viz_pose_desired_pub.publish(self.desired_pose_viz)
 
 	def start_robot(self):
 		# if self.ip is None:
@@ -127,7 +127,13 @@ class Franka:
 
 		self.initial_pose_found = False
 
-		self.pose_viz = PoseStamped()
+		self.desired_pose_viz = PoseStamped()
+		
+		self.home_pose_viz = PoseStamped()
+		self.home_pose_viz.header.frame_id = 'panda_link0'
+
+		self.zero_pose_viz = PoseStamped()
+		self.zero_pose_viz.header.frame_id = 'panda_link0'
 
 		# self.marker_sp = PoseWrenchStiff()
 		self.initial_pose = PoseStamped()
@@ -142,8 +148,8 @@ class Franka:
 			# self.rotation_stiffness = 1.*self.translation_stiffness
 			# copied over from the contact generation policy
 			self.translation_stiffness = np.array([200., 200., 200.])
-			self.rotation_stiffness = np.array([10., 10., 10.])
-			self.controller_setpoint.tau_filter_coeff = 0.05 # NEED TO SET THIS NONZERO! Otherwise controller does nothing
+			self.rotation_stiffness = np.array([100., 100., 100.])
+			self.controller_setpoint.tau_filter_coeff = 1.0 # NEED TO SET THIS NONZERO! Otherwise controller does nothing
 		else:
 			# self.marker_sp.cartesian_stiffness = (500., 500., 500., 1500., 1200., 1500.) # for stiff tracking, 200 for trans 10 for orientation...
 			# self.translation_stiffness = np.array([400., 400., 400.])
@@ -202,12 +208,50 @@ class Franka:
 		# Publish visualization of where franka is moving
 		self.viz_pose_desired_pub = rospy.Publisher("/panda/hybrid_impedance_wrench_controller/pose_viz", PoseStamped, queue_size=1, tcp_nodelay=True)
 
+		# set up publisher for both home and zero poses
+		self.viz_home_pose_pub = rospy.Publisher("/panda/home_pose", PoseStamped, queue_size=1, tcp_nodelay=True)
+		self.viz_zero_pose_pub = rospy.Publisher("/panda/zero_pose", PoseStamped, queue_size=1, tcp_nodelay=True)
+
+		# setup a timer based callback to publish the home and zero pose at 1 Hz
+		self.home_zero_pose_timer = rospy.Timer(rospy.Duration(1.0), self.home_zero_pose_callback)
+
 		# create a publisher for the franka command
 		self.desired_setpoint_pub = rospy.Publisher("/panda/hybrid_impedance_wrench_controller/pose_wrench_desired", PoseWrenchStiff, queue_size=1)
 		# self.desired_setpoint_pub = rospy.Publisher("/cartesian_impedance_example_controller/equilibrium_pose", PoseStamped, queue_size=1)
 	
 		###################################
+	def home_zero_pose_callback(self, event):
+		'''
+		Publish home and zero pose for visualization
+		'''
+		home_pos = np.array([self.zero[0] + self.home[0], self.zero[1] + self.home[1], self.zero[2] + self.home[2], self.roll, self.pitch, self.yaw])
+		self.home_pose_viz.pose = self.sixd_pos_to_pose(home_pos)
+		# print('home pose: ', home_pose)
 
+		zero_pos = np.array([self.zero[0], self.zero[1], self.zero[2], self.roll, self.pitch, self.yaw])
+		self.zero_pose_viz.pose = self.sixd_pos_to_pose(zero_pos)
+		# print('zero pose: ', zero_pose)
+		# self.home_pose_viz.pose = ros_numpy.msgify(Pose, np.array([self.zero[0] + self.home[0], 
+		# 													 self.zero[1] + self.home[1], 
+		# 													 self.zero[2] + self.home[2], 
+		# 													 self.roll, self.pitch, self.yaw])
+		# 													)
+		self.viz_home_pose_pub.publish(self.home_pose_viz)
+
+		# self.zero_pose_viz.pose = ros_numpy.msgify(Pose, np.array([self.zero[0], self.zero[1], self.zero[2], self.roll, self.pitch, self.yaw]))
+		self.viz_zero_pose_pub.publish(self.zero_pose_viz)
+
+	def sixd_pos_to_pose(self, pos):
+		'''
+		Convert a 6dof position to a Pose
+		'''
+		pose = Pose()
+		pose.position.x = pos[0]
+		pose.position.y = pos[1]
+		pose.position.z = pos[2]
+		pose.orientation = ros_numpy.msgify(Quaternion, R.from_euler('xyz', [pos[3], pos[4], pos[5]], degrees=True).as_quat())
+		return pose
+	
 	def set_mode_and_state(self, mode=0, state=0):
 		# self.arm.set_mode(mode)
 		# self.arm.set_state(state=state)

@@ -151,7 +151,7 @@ class Reach(BaseClass):
 			image = self.cam.get_frame()
 
 			self.joy.detect_event()
-			pos, action = self.joy.move() # pos is the desired position after the action
+			pos, action = self.joy.move() # pos is the desired pose after the action
 
 			if action == 'start':
 				start = True

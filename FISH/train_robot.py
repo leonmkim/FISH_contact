@@ -166,7 +166,7 @@ class WorkspaceIL:
 		# Reset env
 		self.train_env.reset()
 
-	def train_il(self):
+	def train_il(self): # Leon: main method
 
 		if repr(self.agent) in ['vinn', 'bc']:
 			self.cfg.suite.num_seed_frames = 0
@@ -184,7 +184,7 @@ class WorkspaceIL:
 		if 'vinn' in repr(self.agent) or 'openloop' in repr(self.agent): # Leon: this is run for potil_vinn_offset
 			expert_demo = np.concatenate(self.expert_demo, axis=0)
 			expert_action = np.concatenate(self.expert_action, axis=0)
-			self.agent.save_representations(expert_demo, expert_action, 128) # Leon: this runs expert demo through vinn_encoder and saves the representations
+			self.agent.save_representations(expert_demo, expert_action, 128) # Leon: this runs expert demo through vinn_encoder and saves the representations and actions
 
 		if repr(self.agent) not in ['bc', 'vinn']: # Leon: this is run for potil_vinn_offset
 			time_steps = list()
@@ -219,7 +219,7 @@ class WorkspaceIL:
 					new_rewards = self.agent.dac_rewarder(observations, actions)
 					new_rewards_sum = np.sum(new_rewards)
 				
-				if 'potil' in repr(self.agent):
+				if 'potil' in repr(self.agent): # Leon: this is run for potil_vinn_offset
 					if self.agent.auto_rew_scale: 
 						if self._global_episode == 1:
 							self.agent.sinkhorn_rew_scale = self.agent.sinkhorn_rew_scale * self.agent.auto_rew_scale_factor / float(
@@ -231,7 +231,7 @@ class WorkspaceIL:
 				for i, elt in enumerate(time_steps):
 					elt = elt._replace(
 						observation=time_steps[i].observation[self.cfg.obs_type])
-					if 'potil' in repr(self.agent) or repr(self.agent) == 'dac':
+					if 'potil' in repr(self.agent) or repr(self.agent) == 'dac': # Leon: this is run for potil_vinn_offset
 							elt = elt._replace(reward=new_rewards[i])
 					self.replay_storage.add(elt)
 
@@ -272,7 +272,7 @@ class WorkspaceIL:
 				episode_step = 0
 				episode_reward = 0
 
-			if repr(self.agent) not in ['bc', 'vinn']:
+			if repr(self.agent) not in ['bc', 'vinn']: # Leon: this is run for potil_vinn_offset
 				# try to evaluate
 				if eval_every_step(self.global_step):
 					self.logger.log('eval_total_time', self.timer.total_time(),
@@ -302,7 +302,7 @@ class WorkspaceIL:
 				if repr(self.agent) in  ['bc', 'vinn'] and self.cfg.suite.save_snapshot and self._global_step % 100 == 0:
 					self.save_snapshot(f"snapshot_{self._global_step}.pt")
 
-			if repr(self.agent) not in  ['bc', 'vinn']:
+			if repr(self.agent) not in  ['bc', 'vinn']: # Leon: this is run for potil_vinn_offset
 				# take env step
 				time_step = self.train_env.step(action, vinn_action)
 				episode_reward += time_step.reward

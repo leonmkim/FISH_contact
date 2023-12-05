@@ -9,7 +9,7 @@ class XboxJoy:
 
 	def __init__(self,
 				 arm,
-				 scale_factor_pos=0.3, 
+				 scale_factor_pos=0.03, 
 				 scale_factor_gripper=300, 
 				 scale_factor_rotation=120, #0.1,
 				 motion_scale_change=0.01,
@@ -236,6 +236,20 @@ class XboxJoy:
 		self.arm.set_position(pos)
 		time.sleep(self.sleep)
 		return pos
+	
+	def _roll_arm_cw(self):
+		pos = self.arm.get_position()
+		pos[3] += self.scale_factor_rotation
+		self.arm.set_position(pos, use_roll=True)
+		time.sleep(self.sleep)
+		return pos
+	
+	def _roll_arm_ccw(self):
+		pos = self.arm.get_position()
+		pos[3] -= self.scale_factor_rotation
+		self.arm.set_position(pos, use_roll=True)
+		time.sleep(self.sleep)
+		return pos
 
 	def _open_gripper(self):
 		self.arm.open_gripper_fully()
@@ -248,6 +262,7 @@ class XboxJoy:
 		pos = -1
 		time.sleep(self.sleep/2)
 		return pos
+	
 
 	def _rotate_arm_cw(self): # Leon: actuates the 7th joint which rotates the end-effector clockwise
 		angles = self.arm.get_servo_angle()
@@ -280,13 +295,21 @@ class XboxJoy:
 
 if __name__ == "__main__":
 	import rospy
-
-	arm = Franka()
+	home_displacement = [0.2,0,0.2]
+	x_limit = [0.075, 0.35] 
+	y_limit = [-0.17, 0.13]
+	z_limit = [0.14, 0.34] 
+	arm = Franka(
+		home_displacement=home_displacement,
+		x_limit=x_limit,
+		y_limit=y_limit,
+		z_limit=z_limit,
+		)
 	arm.start_robot()
-	joy = XboxJoy(arm, scale_factor_pos=0.15,
+	joy = XboxJoy(arm, scale_factor_pos=0.015,
 			  scale_factor_gripper=50, 
-			  scale_factor_rotation=120,
-			  motion_scale_change=0.03,
+			  scale_factor_rotation=10,
+			  motion_scale_change=0.003,
 			  sleep=0.4)
 	# loop but catch ctrl+c
 	while not rospy.is_shutdown():
