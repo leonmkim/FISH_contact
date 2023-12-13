@@ -19,7 +19,7 @@ import copy
 import rospy
 import ros_numpy
 from scipy.spatial.transform import Rotation as R
-
+import rosnode
 class Franka:
 
 	def __init__(self, config_file='./robot.conf', 
@@ -30,9 +30,13 @@ class Franka:
 			  high_range=(0.2,0.2,0.1),
 				 keep_gripper_closed=False, highest_start=False, x_limit=None, y_limit=None, z_limit=None, yaw_limit=None,
 				 pitch = 0, roll=180, yaw=0, gripper_action_scale=200, start_at_the_back=False,
-				 in_sim=True,
 				 ):
-		self.in_sim = in_sim
+		###################################
+		# ROS stuff
+		rospy.init_node('franka_gym_node') 
+
+		# check if rosnode /gazebo exists, if yes, then we are in simulation
+		self.in_sim = '/gazebo' in rosnode.get_node_names()
 		# self.arm = None
 		self.gripper_max_open = 800
 		self.gripper_min_open = 0
@@ -57,10 +61,10 @@ class Franka:
 		
 		# THESE ARE RELATIVE TO ABOVE DEFINED ZERO FRAME 
 		# self.x_limit = [0.05, 0.35] if x_limit is None else x_limit # Leon: this is the original
-		self.x_limit = [0.05, 0.4] if x_limit is None else x_limit
+		self.x_limit = [0.05, 0.5] if x_limit is None else x_limit
 		# self.y_limit = [-0.17, 0.13] if y_limit is None else y_limit # Leon: this is the original
-		self.y_limit = [-0.3, 0.3] if y_limit is None else y_limit
-		self.z_limit = [0.14, 0.4] if z_limit is None else z_limit
+		self.y_limit = [-0.5, 0.5] if y_limit is None else y_limit
+		self.z_limit = [0.0, 0.4] if z_limit is None else z_limit
 		self.yaw_limit = None if yaw_limit is None else yaw_limit 
 
 		# Pitch value - Horizontal or vertical orientation
@@ -123,9 +127,9 @@ class Franka:
 		# 	self.arm.clean_error()
 		# self.set_mode_and_state()
 		
-		###################################
-		# ROS stuff
-		rospy.init_node('franka_gym_node') 
+		# ###################################
+		# # ROS stuff
+		# rospy.init_node('franka_gym_node') 
 
 		self.initial_pose_found = False
 
@@ -155,9 +159,9 @@ class Franka:
 		else:
 			# self.marker_sp.cartesian_stiffness = (500., 500., 500., 1500., 1200., 1500.) # for stiff tracking, 200 for trans 10 for orientation...
 			# self.translation_stiffness = np.array([400., 400., 400.])
-			self.translation_stiffness = np.array([400., 400., 400.])
+			self.translation_stiffness = np.array([900., 900., 900.]) # this is very stiff tracking, still has some errors though. 
 			# self.rotation_stiffness = 1.3*self.translation_stiffness
-			self.rotation_stiffness = 1.8*self.translation_stiffness
+			self.rotation_stiffness = 2.0*self.translation_stiffness
 			# self.marker_sp.tau_filter_coeff = 0.06
 			self.controller_setpoint.tau_filter_coeff = 1.0
 	

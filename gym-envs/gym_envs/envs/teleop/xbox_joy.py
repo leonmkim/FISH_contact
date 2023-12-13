@@ -299,13 +299,11 @@ if __name__ == "__main__":
 	x_limit = [0.075, 0.35] 
 	y_limit = [-0.17, 0.13]
 	z_limit = [0.14, 0.34]
-	in_sim = False 
 	arm = Franka(
 		home_displacement=home_displacement,
 		x_limit=x_limit,
 		y_limit=y_limit,
 		z_limit=z_limit,
-		in_sim=in_sim,
 		)
 	arm.start_robot()
 	joy = XboxJoy(arm,

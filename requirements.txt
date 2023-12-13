@@ -9,6 +9,8 @@ scikit-image==0.18.1
 protobuf==3.20.1
 termcolor==1.1.0
 # mujoco-py @ git+https://github.com/openai/mujoco-py
+git+https://github.com/xArm-Developer/xArm-Python-SDK.git
+
 dm_control
 gym==0.22.0
 tb-nightly

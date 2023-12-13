@@ -1,5 +1,18 @@
 from demo_class import *
 
+LEON_TASK_PARAMS = {
+    'Reach' : {
+					'demo_class': Reach,
+					'home_displacement': (0.2, 0.0, 0.2),
+					'keep_gripper_closed': False,
+					'highest_start' : False,
+					'random_start' : True,
+					'x_limit' : (0.05, 0.35),
+					'y_limit' : (-0.17, 0.13),
+					'z_limit' : (0.02, 0.34),
+					'episode_len': 30
+	},
+}
 TASK_PARAMS = {
 		'Reach' : {
 					'demo_class': Reach,
