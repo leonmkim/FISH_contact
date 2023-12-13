@@ -56,9 +56,11 @@ class Franka:
 		# self.yaw_limit = None if yaw_limit is None else yaw_limit
 		
 		# THESE ARE RELATIVE TO ABOVE DEFINED ZERO FRAME 
-		self.x_limit = [0.05, 0.35] if x_limit is None else x_limit
-		self.y_limit = [-0.17, 0.13] if y_limit is None else y_limit
-		self.z_limit = [0.14, 0.34] if z_limit is None else z_limit
+		# self.x_limit = [0.05, 0.35] if x_limit is None else x_limit # Leon: this is the original
+		self.x_limit = [0.05, 0.4] if x_limit is None else x_limit
+		# self.y_limit = [-0.17, 0.13] if y_limit is None else y_limit # Leon: this is the original
+		self.y_limit = [-0.3, 0.3] if y_limit is None else y_limit
+		self.z_limit = [0.14, 0.4] if z_limit is None else z_limit
 		self.yaw_limit = None if yaw_limit is None else yaw_limit 
 
 		# Pitch value - Horizontal or vertical orientation
@@ -155,7 +157,7 @@ class Franka:
 			# self.translation_stiffness = np.array([400., 400., 400.])
 			self.translation_stiffness = np.array([400., 400., 400.])
 			# self.rotation_stiffness = 1.3*self.translation_stiffness
-			self.rotation_stiffness = 1.6*self.translation_stiffness
+			self.rotation_stiffness = 1.8*self.translation_stiffness
 			# self.marker_sp.tau_filter_coeff = 0.06
 			self.controller_setpoint.tau_filter_coeff = 1.0
 	

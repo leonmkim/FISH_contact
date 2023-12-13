@@ -23,4 +23,3 @@ with open(requirements_file, "w") as f:
                 for package, version in dependency.items():
                     f.write(package + "==" + version + "\n")
 
-# %%

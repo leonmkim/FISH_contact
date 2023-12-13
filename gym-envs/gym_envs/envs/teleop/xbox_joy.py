@@ -298,15 +298,18 @@ if __name__ == "__main__":
 	home_displacement = [0.2,0,0.2]
 	x_limit = [0.075, 0.35] 
 	y_limit = [-0.17, 0.13]
-	z_limit = [0.14, 0.34] 
+	z_limit = [0.14, 0.34]
+	in_sim = False 
 	arm = Franka(
 		home_displacement=home_displacement,
 		x_limit=x_limit,
 		y_limit=y_limit,
 		z_limit=z_limit,
+		in_sim=in_sim,
 		)
 	arm.start_robot()
-	joy = XboxJoy(arm, scale_factor_pos=0.015,
+	joy = XboxJoy(arm,
+			   scale_factor_pos=0.015,
 			  scale_factor_gripper=50, 
 			  scale_factor_rotation=10,
 			  motion_scale_change=0.003,
