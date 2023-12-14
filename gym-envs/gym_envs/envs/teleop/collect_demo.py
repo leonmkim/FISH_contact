@@ -1,4 +1,4 @@
-from task_params import TASK_PARAMS
+from gym_envs.envs.teleop.task_params import CONTACT_TASK_PARAMS
 
 import os
 from pathlib import Path
@@ -7,12 +7,13 @@ if __name__ == '__main__':
 
 	image_width = 640
 	image_height = 480
-	task_name = 'EraseBoard' # Reach, InsertPegEasy/Medium/Hard, TurnKnob, HangMug/Bag/Hanger, DoorClose, BoxOpen, Pour, CupStacking, ButtonPress, HangHanger, EraseBoard
+	task_name = 'Reach' # Reach, InsertPegEasy/Medium/Hard, TurnKnob, HangMug/Bag/Hanger, DoorClose, BoxOpen, Pour, CupStacking, ButtonPress, HangHanger, EraseBoard
 	num_trajectories = 1
-	exp_name = 'random_s_fixed_g'
+	# exp_name = 'random_s_fixed_g'
+	exp_name = 'test'
 	sleep = 0.4
 	
-	task_params = TASK_PARAMS[task_name]
+	task_params = CONTACT_TASK_PARAMS[task_name]
 	task = task_params['demo_class'](sleep=sleep, image_width=image_width, image_height=image_height, home_displacement=task_params['home_displacement'],
 								   random_start=task_params['random_start'], keep_gripper_closed=task_params['keep_gripper_closed'], highest_start=task_params['highest_start'], 
 								   x_limit=task_params['x_limit'], y_limit=task_params['y_limit'], z_limit=task_params['z_limit'])

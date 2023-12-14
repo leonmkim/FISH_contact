@@ -5,14 +5,15 @@ import numpy as np
 import cv2
 import datetime
 
-from robot import XArm
-from joy import Joy
-from camera import Camera
+# from robot import XArm
+from gym_envs.envs.hardware.franka import Franka
+from gym_envs.envs.hardware.camera import Camera
+from gym_envs.envs.teleop.joy import Joy
 
 class BaseClass:
 	def __init__(self, 
 				 servo_angle=None,
-				 scale_factor_pos=0.5, # the delta pos for each primitive direction
+				 scale_factor_pos=0.05, # the delta pos for each primitive direction
 				 scale_factor_gripper=300, 
 				 scale_factor_rotation=120,
 				 image_width=84,
@@ -44,12 +45,13 @@ class BaseClass:
 
 	def init_arm(self, home_displacement=(0,0,0), keep_gripper_closed=False, highest_start=False,
 				 x_limit=None, y_limit=None, z_limit=None, pitch=0, roll=180):
-		self.arm = XArm(home_displacement=home_displacement, keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, 
+		# self.arm = XArm(home_displacement=home_displacement, keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, 
+						# x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, pitch=pitch, roll=roll)
+		self.arm = Franka(home_displacement=home_displacement, keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, 
 						x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, pitch=pitch, roll=roll)
-
 		self.arm.start_robot()
-		self.arm.set_mode_and_state()
-		self.arm.reset(home=True)
+		# self.arm.set_mode_and_state()
+		self.arm.reset(home=True) # Leon: will go to home as reset_at_home is by default true
 		time.sleep(1)
 
 	def record_trajectories(self, 
@@ -120,7 +122,7 @@ class BaseClass:
 
 class Reach(BaseClass):
 	def __init__(self, 
-				 scale_factor_pos=0.25,
+				 scale_factor_pos=0.025,
 				 image_width=84,
 				 image_height=84,
 				 home_displacement=(0,0,0),
@@ -175,264 +177,264 @@ class Reach(BaseClass):
 
 		return state_obs, image_obs, actions, rewards
 
-class HorizontalReach(BaseClass):
-	def __init__(self, 
-				 scale_factor_pos=0.25,
-				 image_width=84,
-				 image_height=84,
-				 home_displacement=(0,0,0),
-				 random_start=True,
-				 keep_gripper_closed=False,
-				 highest_start=False,
-				 x_limit = None,
-				 y_limit = None,
-				 z_limit = None,
-				 **kwargs):
-		super().__init__(scale_factor_pos=scale_factor_pos, image_width=image_width, image_height=image_height, home_displacement=home_displacement, random_start=random_start,
-						 keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, pitch=-90, **kwargs)
+# class HorizontalReach(BaseClass):
+# 	def __init__(self, 
+# 				 scale_factor_pos=0.025,
+# 				 image_width=84,
+# 				 image_height=84,
+# 				 home_displacement=(0,0,0),
+# 				 random_start=True,
+# 				 keep_gripper_closed=False,
+# 				 highest_start=False,
+# 				 x_limit = None,
+# 				 y_limit = None,
+# 				 z_limit = None,
+# 				 **kwargs):
+# 		super().__init__(scale_factor_pos=scale_factor_pos, image_width=image_width, image_height=image_height, home_displacement=home_displacement, random_start=random_start,
+# 						 keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, pitch=-90, **kwargs)
 
-	def _record_trajectory(self, episode_len):
+# 	def _record_trajectory(self, episode_len):
 		
-		actions = []
-		state_obs = []
-		image_obs = []
-		rewards = []
-		step = 0
-		start = False
-		action_types = ['move_forward', 'move_backward', 'move_left',
-						'move_right', 'move_up', 'move_down']
+# 		actions = []
+# 		state_obs = []
+# 		image_obs = []
+# 		rewards = []
+# 		step = 0
+# 		start = False
+# 		action_types = ['move_forward', 'move_backward', 'move_left',
+# 						'move_right', 'move_up', 'move_down']
 
-		while(True):
-			# Get observations
-			obs = self.arm.get_position()[:3]
-			image = self.cam.get_frame()
-			self.joy.detect_event()
-			pos, action = self.joy.move()
+# 		while(True):
+# 			# Get observations
+# 			obs = self.arm.get_position()[:3]
+# 			image = self.cam.get_frame()
+# 			self.joy.detect_event()
+# 			pos, action = self.joy.move()
 
-			if action == 'start':
-				start = True
-			elif action =='stop' or step == episode_len:
-				for _ in range(episode_len - step):
-					state_obs.append(obs)
-					image_obs.append(image)
-					actions.append(np.zeros(3).astype(np.float32))
-					rewards.append(1)
-				break
-			elif action == 'cancel':
-				return None, None, None, None
-			elif start and action in action_types:
-				pos = pos[:3]
-				if action in action_types:
-					state_obs.append(obs)
-					image_obs.append(image)
-					actions.append(pos-obs)
-					rewards.append(0)
-				step += 1
+# 			if action == 'start':
+# 				start = True
+# 			elif action =='stop' or step == episode_len:
+# 				for _ in range(episode_len - step):
+# 					state_obs.append(obs)
+# 					image_obs.append(image)
+# 					actions.append(np.zeros(3).astype(np.float32))
+# 					rewards.append(1)
+# 				break
+# 			elif action == 'cancel':
+# 				return None, None, None, None
+# 			elif start and action in action_types:
+# 				pos = pos[:3]
+# 				if action in action_types:
+# 					state_obs.append(obs)
+# 					image_obs.append(image)
+# 					actions.append(pos-obs)
+# 					rewards.append(0)
+# 				step += 1
 
-		return state_obs, image_obs, actions, rewards
+# 		return state_obs, image_obs, actions, rewards
 
-class SideReach(BaseClass):
-	def __init__(self, 
-				 scale_factor_pos=0.25,
-				 image_width=84,
-				 image_height=84,
-				 home_displacement=(0,0,0),
-				 random_start=True,
-				 keep_gripper_closed=False,
-				 highest_start=False,
-				 x_limit = None,
-				 y_limit = None,
-				 z_limit = None,
-				 **kwargs):
-		super().__init__(scale_factor_pos=scale_factor_pos, image_width=image_width, image_height=image_height, home_displacement=home_displacement, random_start=random_start,
-						 keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, roll=90, **kwargs)
+# class SideReach(BaseClass):
+# 	def __init__(self, 
+# 				 scale_factor_pos=0.025,
+# 				 image_width=84,
+# 				 image_height=84,
+# 				 home_displacement=(0,0,0),
+# 				 random_start=True,
+# 				 keep_gripper_closed=False,
+# 				 highest_start=False,
+# 				 x_limit = None,
+# 				 y_limit = None,
+# 				 z_limit = None,
+# 				 **kwargs):
+# 		super().__init__(scale_factor_pos=scale_factor_pos, image_width=image_width, image_height=image_height, home_displacement=home_displacement, random_start=random_start,
+# 						 keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, roll=90, **kwargs)
 		
-	def init_arm(self, home_displacement=(0,0,0), keep_gripper_closed=False, highest_start=False,
-				 x_limit=None, y_limit=None, z_limit=None, pitch=0, roll=180):
-		self.arm = XArm(home_displacement=home_displacement, keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, 
-						x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, pitch=pitch, roll=roll)
-		self.arm.start_robot()
-		self.arm.set_mode_and_state()
-		self.arm.reset(home=True, reset_at_home=True)
-		time.sleep(1)
+# 	def init_arm(self, home_displacement=(0,0,0), keep_gripper_closed=False, highest_start=False,
+# 				 x_limit=None, y_limit=None, z_limit=None, pitch=0, roll=180):
+# 		self.arm = XArm(home_displacement=home_displacement, keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, 
+# 						x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, pitch=pitch, roll=roll)
+# 		self.arm.start_robot()
+# 		self.arm.set_mode_and_state()
+# 		self.arm.reset(home=True, reset_at_home=True)
+# 		time.sleep(1)
 
-	def _record_trajectory(self, episode_len):
+# 	def _record_trajectory(self, episode_len):
 		
-		actions = []
-		state_obs = []
-		image_obs = []
-		rewards = []
-		step = 0
-		start = False
-		action_types = ['move_forward', 'move_backward', 'move_left',
-						'move_right', 'move_up', 'move_down']
+# 		actions = []
+# 		state_obs = []
+# 		image_obs = []
+# 		rewards = []
+# 		step = 0
+# 		start = False
+# 		action_types = ['move_forward', 'move_backward', 'move_left',
+# 						'move_right', 'move_up', 'move_down']
 
-		while(True):
-			obs = self.arm.get_position()[:3]
-			image = self.cam.get_frame()
+# 		while(True):
+# 			obs = self.arm.get_position()[:3]
+# 			image = self.cam.get_frame()
 
-			self.joy.detect_event()
-			pos, action = self.joy.move()
+# 			self.joy.detect_event()
+# 			pos, action = self.joy.move()
 
-			if action == 'start':
-				start = True
-			elif action =='stop' or step == episode_len:
-				for _ in range(episode_len - step):
-					state_obs.append(obs)
-					image_obs.append(image)
-					actions.append(np.zeros(3).astype(np.float32))
-					rewards.append(1)
-				break
-			elif action == 'cancel':
-				return None, None, None, None
-			elif start and action in action_types:
-				pos = pos[:3]
-				if action in action_types:
-					state_obs.append(obs)
-					image_obs.append(image)
-					actions.append(pos-obs)
-					rewards.append(0)
-				step += 1
+# 			if action == 'start':
+# 				start = True
+# 			elif action =='stop' or step == episode_len:
+# 				for _ in range(episode_len - step):
+# 					state_obs.append(obs)
+# 					image_obs.append(image)
+# 					actions.append(np.zeros(3).astype(np.float32))
+# 					rewards.append(1)
+# 				break
+# 			elif action == 'cancel':
+# 				return None, None, None, None
+# 			elif start and action in action_types:
+# 				pos = pos[:3]
+# 				if action in action_types:
+# 					state_obs.append(obs)
+# 					image_obs.append(image)
+# 					actions.append(pos-obs)
+# 					rewards.append(0)
+# 				step += 1
 
-		return state_obs, image_obs, actions, rewards
+# 		return state_obs, image_obs, actions, rewards
 
 
-class PickandPlace(BaseClass):
-	def __init__(self, 
-				 scale_factor_pos=0.25,
-				 scale_factor_gripper=200,
-				 image_width=84,
-				 image_height=84,
-				 home_displacement=(0,0,0),
-				 random_start=False,
-				 keep_gripper_closed=False,
-				 highest_start=False,
-				 x_limit = None,
-				 y_limit = None,
-				 z_limit = None,
-				 **kwargs):
-				super().__init__(scale_factor_pos=scale_factor_pos, image_width=image_width, image_height=image_height, home_displacement=home_displacement, random_start=random_start,
-						 keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, roll=180, **kwargs)
+# class PickandPlace(BaseClass):
+# 	def __init__(self, 
+# 				 scale_factor_pos=0.025,
+# 				 scale_factor_gripper=200,
+# 				 image_width=84,
+# 				 image_height=84,
+# 				 home_displacement=(0,0,0),
+# 				 random_start=False,
+# 				 keep_gripper_closed=False,
+# 				 highest_start=False,
+# 				 x_limit = None,
+# 				 y_limit = None,
+# 				 z_limit = None,
+# 				 **kwargs):
+# 				super().__init__(scale_factor_pos=scale_factor_pos, image_width=image_width, image_height=image_height, home_displacement=home_displacement, random_start=random_start,
+# 						 keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, roll=180, **kwargs)
 
-	def _record_trajectory(self, episode_len):		
-		actions = []
-		state_obs = []
-		image_obs = []
-		rewards = []
-		step = 0
-		start = False
-		action_types = ['move_forward', 'move_backward', 'move_left', 'move_right',
-						'move_up', 'move_down', 'close_gripper', 'open_gripper']
+# 	def _record_trajectory(self, episode_len):		
+# 		actions = []
+# 		state_obs = []
+# 		image_obs = []
+# 		rewards = []
+# 		step = 0
+# 		start = False
+# 		action_types = ['move_forward', 'move_backward', 'move_left', 'move_right',
+# 						'move_up', 'move_down', 'close_gripper', 'open_gripper']
 
-		while(True):
-			# Get observations
-			obs = self.arm.get_position()[:3]
-			gripper_obs = np.reshape(self.arm.get_gripper_position(), (1,)).astype(np.float32)
-			obs = np.concatenate((obs, gripper_obs), axis=0)
-			image = self.cam.get_frame()
+# 		while(True):
+# 			# Get observations
+# 			obs = self.arm.get_position()[:3]
+# 			gripper_obs = np.reshape(self.arm.get_gripper_position(), (1,)).astype(np.float32)
+# 			obs = np.concatenate((obs, gripper_obs), axis=0)
+# 			image = self.cam.get_frame()
 			
-			self.joy.detect_event()
-			pos, action = self.joy.move()
-			if action is not None:
-				print(action)
-			if action == 'start':
-				start = True
-			elif action =='stop' or step == episode_len:
-				for _ in range(episode_len - step):
-					state_obs.append(obs)
-					image_obs.append(image)
-					actions.append(np.zeros(4).astype(np.float32))
-					rewards.append(1)
-				break
-			elif action == 'cancel':
-				return None, None, None, None
-			elif start and action in action_types:
-				state_obs.append(obs)
-				image_obs.append(image)
-				if 'gripper' in action:
-					pos = np.reshape(pos, (1,)).astype(np.float32)
-					pos = np.concatenate((np.zeros(3), pos), axis=0)
-					print(f"pos with gripper:{pos}")
-				else:
-					pos = pos[:3]
-					pos = np.concatenate((pos-obs[:3], np.zeros(1)), axis=0)
-					print(f"pos without gripper:{pos}")
-				actions.append(pos)
-				rewards.append(0)
-				step += 1
+# 			self.joy.detect_event()
+# 			pos, action = self.joy.move()
+# 			if action is not None:
+# 				print(action)
+# 			if action == 'start':
+# 				start = True
+# 			elif action =='stop' or step == episode_len:
+# 				for _ in range(episode_len - step):
+# 					state_obs.append(obs)
+# 					image_obs.append(image)
+# 					actions.append(np.zeros(4).astype(np.float32))
+# 					rewards.append(1)
+# 				break
+# 			elif action == 'cancel':
+# 				return None, None, None, None
+# 			elif start and action in action_types:
+# 				state_obs.append(obs)
+# 				image_obs.append(image)
+# 				if 'gripper' in action:
+# 					pos = np.reshape(pos, (1,)).astype(np.float32)
+# 					pos = np.concatenate((np.zeros(3), pos), axis=0)
+# 					print(f"pos with gripper:{pos}")
+# 				else:
+# 					pos = pos[:3]
+# 					pos = np.concatenate((pos-obs[:3], np.zeros(1)), axis=0)
+# 					print(f"pos without gripper:{pos}")
+# 				actions.append(pos)
+# 				rewards.append(0)
+# 				step += 1
 
-		return state_obs, image_obs, actions, rewards
+# 		return state_obs, image_obs, actions, rewards
 
-class Pour(BaseClass):
-	def __init__(self, 
-				 scale_factor_pos=0.25,
-				 image_width=84,
-				 image_height=84,
-				 home_displacement=(0,0,0),
-				 random_start=True,
-				 keep_gripper_closed=False,
-				 highest_start=False,
-				 x_limit = None,
-				 y_limit = None,
-				 z_limit = None,
-				 **kwargs):
-		super().__init__(scale_factor_pos=scale_factor_pos, image_width=image_width, image_height=image_height, home_displacement=home_displacement, 
-						 random_start=random_start, keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, x_limit=x_limit,
-						 y_limit=y_limit, z_limit=z_limit, pitch=90, roll=-90, scale_factor_rotation=40, **kwargs)
+# class Pour(BaseClass):
+# 	def __init__(self, 
+# 				 scale_factor_pos=0.025,
+# 				 image_width=84,
+# 				 image_height=84,
+# 				 home_displacement=(0,0,0),
+# 				 random_start=True,
+# 				 keep_gripper_closed=False,
+# 				 highest_start=False,
+# 				 x_limit = None,
+# 				 y_limit = None,
+# 				 z_limit = None,
+# 				 **kwargs):
+# 		super().__init__(scale_factor_pos=scale_factor_pos, image_width=image_width, image_height=image_height, home_displacement=home_displacement, 
+# 						 random_start=random_start, keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, x_limit=x_limit,
+# 						 y_limit=y_limit, z_limit=z_limit, pitch=90, roll=-90, scale_factor_rotation=40, **kwargs)
 		
-	def init_arm(self, home_displacement=(0,0,0), keep_gripper_closed=False, highest_start=False,
-				 x_limit=None, y_limit=None, z_limit=None, pitch=90, roll=-90):
-		self.arm = XArm(home_displacement=home_displacement, keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, 
-						x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, pitch=pitch, roll=roll)
-		self.arm.start_robot()
-		self.arm.set_mode_and_state()
-		self.arm.reset(home=True, reset_at_home=True)
-		time.sleep(1)
+# 	def init_arm(self, home_displacement=(0,0,0), keep_gripper_closed=False, highest_start=False,
+# 				 x_limit=None, y_limit=None, z_limit=None, pitch=90, roll=-90):
+# 		self.arm = XArm(home_displacement=home_displacement, keep_gripper_closed=keep_gripper_closed, highest_start=highest_start, 
+# 						x_limit=x_limit, y_limit=y_limit, z_limit=z_limit, pitch=pitch, roll=roll)
+# 		self.arm.start_robot()
+# 		self.arm.set_mode_and_state()
+# 		self.arm.reset(home=True, reset_at_home=True)
+# 		time.sleep(1)
 
-	def _record_trajectory(self, episode_len):
+# 	def _record_trajectory(self, episode_len):
 		
-		actions = []
-		state_obs = []
-		image_obs = []
-		rewards = []
-		step = 0
-		start = False
-		action_types = ['move_forward', 'move_backward', 'move_left', 'move_right', 
-						'move_up', 'move_down', 'rotate_arm_cw', 'rotate_arm_ccw']
+# 		actions = []
+# 		state_obs = []
+# 		image_obs = []
+# 		rewards = []
+# 		step = 0
+# 		start = False
+# 		action_types = ['move_forward', 'move_backward', 'move_left', 'move_right', 
+# 						'move_up', 'move_down', 'rotate_arm_cw', 'rotate_arm_ccw']
 
-		while(True):
-			obs = self.arm.get_position()[:3]
-			arm_angle_obs = np.reshape(self.arm.get_servo_angle()[6], (1,)).astype(np.float32)
-			obs = np.concatenate((obs, arm_angle_obs), axis=0)
-			image = self.cam.get_frame()
+# 		while(True):
+# 			obs = self.arm.get_position()[:3]
+# 			arm_angle_obs = np.reshape(self.arm.get_servo_angle()[6], (1,)).astype(np.float32)
+# 			obs = np.concatenate((obs, arm_angle_obs), axis=0)
+# 			image = self.cam.get_frame()
 
-			self.joy.detect_event()
-			pos, action = self.joy.move()
+# 			self.joy.detect_event()
+# 			pos, action = self.joy.move()
 			
-			if action == 'start':
-				start = True
-			elif action =='stop' or step == episode_len:
-				for _ in range(episode_len - step):
-					state_obs.append(obs)
-					image_obs.append(image)
-					actions.append(np.zeros(4).astype(np.float32))
-					rewards.append(1)
-				break
-			elif action == 'cancel':
-				return None, None, None, None
-			elif start and action in action_types:
-				if action in action_types:
-					state_obs.append(obs)
-					image_obs.append(image)
-					if 'rotate_arm' in action:
-						time.sleep(3)
-						pos = np.reshape(pos, (1,)).astype(np.float32)
-						pos = np.concatenate((np.zeros(3), (pos-arm_angle_obs)/40), axis=0)
-					else:
-						pos = pos[:3]
-						pos = np.concatenate((pos-obs[:3], np.zeros(1)), axis=0)
-					actions.append(pos)
-					rewards.append(0)
-				step += 1
+# 			if action == 'start':
+# 				start = True
+# 			elif action =='stop' or step == episode_len:
+# 				for _ in range(episode_len - step):
+# 					state_obs.append(obs)
+# 					image_obs.append(image)
+# 					actions.append(np.zeros(4).astype(np.float32))
+# 					rewards.append(1)
+# 				break
+# 			elif action == 'cancel':
+# 				return None, None, None, None
+# 			elif start and action in action_types:
+# 				if action in action_types:
+# 					state_obs.append(obs)
+# 					image_obs.append(image)
+# 					if 'rotate_arm' in action:
+# 						time.sleep(3)
+# 						pos = np.reshape(pos, (1,)).astype(np.float32)
+# 						pos = np.concatenate((np.zeros(3), (pos-arm_angle_obs)/40), axis=0)
+# 					else:
+# 						pos = pos[:3]
+# 						pos = np.concatenate((pos-obs[:3], np.zeros(1)), axis=0)
+# 					actions.append(pos)
+# 					rewards.append(0)
+# 				step += 1
 
-		return state_obs, image_obs, actions, rewards
+# 		return state_obs, image_obs, actions, rewards
