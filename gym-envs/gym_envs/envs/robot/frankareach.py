@@ -2,16 +2,16 @@ from cgitb import enable
 import time
 import gym
 from gym import spaces
-from gym_envs.envs import robot_env
+from gym_envs.envs import franka_env
 
 import numpy as np
 
-class RobotPegInCupEnv(robot_env.RobotEnv):
+class FrankaReach(franka_env.FrankaEnv):
 	def __init__(self, height=84, width=84, step_size=10, enable_arm=True, enable_gripper=True, enable_camera=True, camera_view='side',
 				 use_depth=False, dist_threshold=0.05, random_start=False, x_limit=None, y_limit=None, z_limit=None, pitch=0, roll=180, keep_gripper_closed=True):
-		robot_env.RobotEnv.__init__(
+		franka_env.FrankaEnv.__init__(
 			self,
-			home_displacement=[2.27, -0.44, 3.4],
+			home_displacement=[0.2,0,0.2],
 			height=height,
 			width=width,
 			step_size=step_size,
@@ -55,7 +55,7 @@ class RobotPegInCupEnv(robot_env.RobotEnv):
 
 	def step(self, action):
 		new_pos = self.arm.get_position() 
-		new_pos[:3] += action[:3] * 0.25
+		new_pos[:3] += action[:3] * 0.025
 		if self.enable_arm:
 			self.arm.set_position(new_pos)
 			time.sleep(0.4)

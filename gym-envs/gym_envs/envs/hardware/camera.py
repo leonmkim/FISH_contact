@@ -10,14 +10,14 @@ import matplotlib.pyplot as plt
 import pyrealsense2 as rs
 from scipy.ndimage import gaussian_filter
 #%%
-
+# TODO: don't crop image here, instead crop it in demo preprocessing
 class Camera:
 	def __init__(self, width=640, height=480, view="side"):
 		# initialize camera
 		self._connect_cam()
 		self._width = width
 		self._height = height
-		self.resize = True
+		self.resize = False #True
 		self.crop = True
 		self.view = view
 		

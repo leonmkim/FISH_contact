@@ -111,11 +111,11 @@ class XboxJoy:
 					print("Cancel demo")
 					self.cancel = True
 				elif event.button == 4:			# LB
-					print("Decrease motion scale")
 					self.scale_factor_pos = max(0.01, self.scale_factor_pos-self.motion_scale_change)
+					print("Decrease motion scale: ", self.scale_factor_pos)
 				elif event.button == 5:			# RB
-					print("Increase motion scale")
 					self.scale_factor_pos += self.motion_scale_change
+					print("Increase motion scale: ", self.scale_factor_pos)
 			
 			elif event.type == pygame.JOYHATMOTION:
 				if event.hat == 0 and event.value == (0,1):

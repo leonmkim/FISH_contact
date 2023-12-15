@@ -5,7 +5,8 @@ defaults:
   - override hydra/launcher: submitit_local
 
 # Root Dir
-root_dir: '/home/serialexperimentsleon/FISH_contact/FISH'
+# root_dir: '/home/serialexperimentsleon/FISH_contact/FISH'
+root_dir: '/home/leonmkim/FISH_contact/FISH'
 
 nstep: 3
 # misc

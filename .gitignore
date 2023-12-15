@@ -1,3 +1,9 @@
+# ignore files under data
+data/*
+
+# ignore any files ending in mp4
+*.mp4
+
 # ignore files under .history
 .history/*
 

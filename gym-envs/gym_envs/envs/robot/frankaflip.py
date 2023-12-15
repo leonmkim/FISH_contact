@@ -3,14 +3,14 @@ import time
 from turtle import home
 import gym
 from gym import spaces
-from gym_envs.envs import franka_env
+from gym_envs.envs import robot_env
 
 import numpy as np
 
-class FrankaFlipEnv(franka_env.FrankaEnv):
+class FrankaFlipEnv(robot_env.FrankaEnv):
 	def __init__(self, height=84, width=84, step_size=10, enable_arm=True, enable_gripper=True, enable_camera=True, camera_view='side',
 				 use_depth=False, dist_threshold=0.05, random_start=True, x_limit=None, y_limit=None, z_limit=None, pitch=0, roll=136, keep_gripper_closed=True, goto_zero_at_init=False):
-		franka_env.FrankaEnv.__init__(
+		robot_env.FrankaEnv.__init__(
 			self,
 			# home_displacement=[1.7, 1.20, 1.82],
 			home_displacement=[0.17, 0.120, 0.182],

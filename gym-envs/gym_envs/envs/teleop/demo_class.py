@@ -8,7 +8,7 @@ import datetime
 # from robot import XArm
 from gym_envs.envs.hardware.franka import Franka
 from gym_envs.envs.hardware.camera import Camera
-from gym_envs.envs.teleop.joy import Joy
+from gym_envs.envs.teleop.xbox_joy import XboxJoy as Joy
 
 class BaseClass:
 	def __init__(self, 
@@ -105,7 +105,7 @@ class BaseClass:
 		os.makedirs(image_dir, exist_ok=True)
 		for j, img in enumerate(traj['image_observation']):
 			image_path = str(image_dir / (str(j)+'.png'))
-			cv2.imwrite(image_path,img[:,:,:3])
+			cv2.imwrite(image_path,img[:,:,:3]) #TODO: change this to save the depth image as well
 		
 		pickle_path = traj_dir / 'traj.pickle'
 		dictionary = {
